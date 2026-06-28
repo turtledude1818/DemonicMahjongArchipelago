@@ -1,12 +1,13 @@
-﻿using System;
+﻿using MaJiang;
+using MaJiang.DataConstruct.Character;
+using MaJiang.DataConstruct.MaJiang;
+using MaJiang.DataConstruct.Relic;
+using MaJiang.DataConstruct.XiaoChouPai;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MaJiang;
-using MaJiang.DataConstruct.Relic;
-using MaJiang.DataConstruct.XiaoChouPai;
-using MaJiang.DataConstruct.Character;
 
 
 namespace DemonicMahjongArchipelago
@@ -14,13 +15,15 @@ namespace DemonicMahjongArchipelago
 
     internal class ItemNames
     {
-        public static class Constants
-        {
-			public const int ITEM_OFFSET = 4624000;
-            public const int CHAR_OFFSET = ITEM_OFFSET;
-            public const int FIGURINE_OFFSET = ITEM_OFFSET + 1000;
-            public const int RELIC_OFFSET = ITEM_OFFSET + 2000;
-        }
+
+		public const int ITEM_OFFSET = 46240000;
+        public const int CHAR_OFFSET = ITEM_OFFSET;
+        public const int FIGURINE_OFFSET = ITEM_OFFSET + 1000;
+		public const int RELIC_OFFSET = ITEM_OFFSET + 2000;
+        public const int FILLER_OFFSET = ITEM_OFFSET + 3000;
+        public const int TRAP_OFFSET = ITEM_OFFSET + 4000;
+
+		public const int NUM_CHARACTERS = 30;
 
         public static Dictionary<CharacterID, string> CharacterNames = new Dictionary<CharacterID, string>
         {
@@ -63,6 +66,9 @@ namespace DemonicMahjongArchipelago
 		};
 
 		public static List<CharacterID> CharacterIds = CharacterNames.Keys.ToList();
+        public static Dictionary<CharacterID, int> CharacterToId =
+            CharacterIds.Select((value, index) => new { index, value })
+            .ToDictionary(pair => pair.value, pair => pair.index);
 
         public static Dictionary<XiaoChou, string> FigurineNames = new Dictionary<XiaoChou, string>
         {

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Archipelago.MultiClient.Net;
 using Archipelago.MultiClient.Net.BounceFeatures.DeathLink;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.Packets;
-using DemonicMahjong.Utils;
 
 namespace DemonicMahjongArchipelago;
 
@@ -44,7 +44,7 @@ public class ArchipelagoClient
         {
            ArchipelagoPlugin.BepinLogger.LogError(e);
         }
-
+        ArchipelagoPlugin.BepinLogger.LogMessage("Session created, attempting connection");
         TryConnect();
     }
 
@@ -53,7 +53,7 @@ public class ArchipelagoClient
     /// </summary>
     private void SetupSession()
     {
-        session.MessageLog.OnMessageReceived += message => ArchipelagoConsole.LogMessage(message.ToString());
+        //session.MessageLog.OnMessageReceived += message => ArchipelagoConsole.LogMessage(message.ToString());
         session.Items.ItemReceived += OnItemReceived;
         session.Socket.ErrorReceived += OnSessionErrorReceived;
         session.Socket.SocketClosed += OnSessionSocketClosed;
@@ -72,15 +72,17 @@ public class ArchipelagoClient
                     session.TryConnectAndLogin(
                         Game,
                         ServerData.SlotName,
-                        ItemsHandlingFlags.AllItems, // TODO make sure to change this line
+                        ItemsHandlingFlags.AllItems, 
                         new Version(APVersion),
                         password: ServerData.Password,
-                        requestSlotData: false // ServerData.NeedSlotData
+                        requestSlotData: true // ServerData.NeedSlotData
                     )));
         }
         catch (Exception e)
         {
-           ArchipelagoPlugin.BepinLogger.LogError(e);
+
+            ArchipelagoPlugin.BepinLogger.LogMessage("Connection failed");
+            ArchipelagoPlugin.BepinLogger.LogError(e);
             HandleConnectResult(new LoginFailure(e.ToString()));
             attemptingConnection = false;
         }
@@ -101,36 +103,41 @@ public class ArchipelagoClient
             Authenticated = true;
 
             DeathLinkHandler = new(session.CreateDeathLinkService(), ServerData.SlotName);
-            session.Locations.CompleteLocationChecksAsync(ServerData.CheckedLocations.ToArray());
+            //session.Locations.CompleteLocationChecksAsync(ServerData.CheckedLocations.ToArray());
             outText = $"Successfully connected to {ServerData.Uri} as {ServerData.SlotName}!";
 
-            ArchipelagoConsole.LogMessage(outText);
+            ArchipelagoPlugin.BepinLogger.LogMessage(outText);
+            //ArchipelagoConsole.LogMessage(outText);
+
+            //GameData.onConnectSetup(success);
         }
         else
         {
             var failure = (LoginFailure)result;
             outText = $"Failed to connect to {ServerData.Uri} as {ServerData.SlotName}.";
+            ArchipelagoPlugin.BepinLogger.LogError(outText);
             outText = failure.Errors.Aggregate(outText, (current, error) => current + $"\n    {error}");
 
-           ArchipelagoPlugin.BepinLogger.LogError(outText);
+            ArchipelagoPlugin.BepinLogger.LogError(outText);
 
             Authenticated = false;
             Disconnect();
         }
 
-        ArchipelagoConsole.LogMessage(outText);
+        //ArchipelagoConsole.LogMessage(outText);
         attemptingConnection = false;
     }
 
     /// <summary>
     /// something went wrong, or we need to properly disconnect from the server. cleanup and re null our session
     /// </summary>
-    private void Disconnect()
+    private async Task Disconnect()
     {
        ArchipelagoPlugin.BepinLogger.LogDebug("disconnecting from server...");
         session?.Socket.DisconnectAsync();
         session = null;
         Authenticated = false;
+        //await GameData.SaveAsync();
     }
 
     public void SendMessage(string message)
@@ -149,18 +156,13 @@ public class ArchipelagoClient
         if (helper.Index <= ServerData.Index) return;
 
         ServerData.Index++;
+        GameData.LastProcessedItem = ServerData.Index;
 
         // TODO reward the item here
         // if items can be received while in an invalid state for actually handling them, they can be placed in a local
         // queue/collection to be handled later
-        if (ArchipelagoData.InGame)
-        {
+        GameData.receiveItem(receivedItem);
 
-        }
-        else
-        {
-            
-        }
     }
 
     /// <summary>
@@ -171,7 +173,7 @@ public class ArchipelagoClient
     private void OnSessionErrorReceived(Exception e, string message)
     {
        ArchipelagoPlugin.BepinLogger.LogError(e);
-        ArchipelagoConsole.LogMessage(message);
+        //ArchipelagoConsole.LogMessage(message);
     }
 
     /// <summary>

@@ -91,77 +91,30 @@ namespace DemonicMahjongArchipelago
             }
             connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
             connectButton.GetComponent<Button>().onClick.AddListener(new Action(onConnectClicked));
-            BepinLogger.LogInfo("Opened UI");
+
+            inputs[0] = GameObject.Find("Server URI").GetComponent<TMP_InputField>()
+                .textComponent.Cast<TextMeshProUGUI>();
+            inputs[1] = GameObject.Find("Player Name").GetComponent<TMP_InputField>()
+                .textComponent.Cast<TextMeshProUGUI>();
+            inputs[2] = GameObject.Find("Password").GetComponent<TMP_InputField>()
+                .textComponent.Cast<TextMeshProUGUI>();
         }
         public static void onConnectClicked()
         {
-            BepinLogger.LogInfo("Connect Clicked");
-            //ArchipelagoClient.ServerData.Uri = inputs[0].text;
-            //ArchipelagoClient.ServerData.SlotName = inputs[1].text;
-            //ArchipelagoClient.ServerData.Password = inputs[2].text;
-            BepinLogger.LogInfo("Connecting to Server");
+            ArchipelagoClient.ServerData.Uri = inputs[0].text;
+            ArchipelagoClient.ServerData.SlotName = inputs[1].text;
+            ArchipelagoClient.ServerData.Password = inputs[2].text;
+            BepinLogger.LogMessage("Connecting to Server");
+            BepinLogger.LogMessage($"URI: {inputs[0].text}\n SlotName: {inputs[1].text}\n Password: {inputs[2].text}");
             ArchipelagoPlugin.ArchipelagoClient.Connect();
-            BepinLogger.LogInfo($"Status: {(ArchipelagoClient.Authenticated ? "Not" : "")} Connected");
-        }
-
-        private static GameObject MakePrefab2()
-        {
-            var prefab = GameObject.Instantiate(MaJiang.GameMap.GameMapMgr.Instance.uiConfig.MainMenuTestGivenPanel);
-            prefab.name = "ArchipelagoConnectPanel";
-
-            //var connectButton = GameObject.Instantiate(MaJiang.GameMap.GameMapMgr.Instance.uiConfig.MainMenuTestGivenPanel
-            //    .transform.Find("PopUI").Find("ConfirmButton").gameObject, prefab.transform.GetChild(0));
-            var connectButton = prefab.transform.GetChild(0).Find("ConfirmButton");
-            connectButton.name = "ConnectButton";
-            //connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
-            //connectButton.GetComponent<Button>().onClick.AddListener(new Action (onConnectClicked));
-            //connectButton.name = "ConnectButton";
-            //Component.Destroy(connectButton.transform.GetChild(0).GetComponent<Localize>());
-            //connectButton.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Connect";
-            //connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
-            //connectButton.GetComponent<Button>().onClick.AddListener(new Action(onConnectClicked));
-            //var panel = prefab.transform.GetChild(1);
-            //var title = panel.Find("Title").Find("Text");
-            //var text = panel.Find("TextContent");
-            //var connectButton = panel.Find("FunctionButtons").GetChild(1);
-            //var closeButton = panel.Find("FunctionButtons").GetChild(2);
-            //
-            //connectButton.gameObject.SetActive(true);
-            //closeButton.gameObject.SetActive(true);
-            //
-            //GameObject.Destroy(panel.Find("FunctionButtons").GetChild(1));
-            //Component.Destroy(title.GetComponent<Localize>());
-            //Component.Destroy(text.GetComponent<Localize>());
-            //
-            //connectButton.name = "ConnectButton";
-            //closeButton.name = "CloseButton";
-            //connectButton.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Connect";
-            //closeButton.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Close";
-            //
-            //connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
-            //connectButton.GetComponent<Button>().onClick.AddListener(new Action(onConnectClicked));
-            //bg.Find("Close").SetSiblingIndex(2);
-            //for (int i = bg.childCount; i > 2; i--)
-            //{
-            //    GameObject.Destroy (bg.GetChild(i).gameObject);
-            //}
-            //var connectButton = GameObject.Instantiate(MaJiang.GameMap.GameMapMgr.Instance.uiConfig.MainMenuTestGivenPanel
-            //    .transform.Find("PopUI").Find("ConfirmButton").gameObject, bg);
-            //connectButton.name = "ConnectButton";
-            //Component.Destroy(connectButton.transform.GetChild(0).GetComponent<Localize>());
-            //connectButton.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Connect";
-            //connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
-            //connectButton.GetComponent<Button>().onClick.AddListener(new Action(onConnectClicked));
-
-            prefab.SetActive(false);
-            return prefab;
+            BepinLogger.LogMessage($"Status: {(ArchipelagoClient.Authenticated ? "" : "Not")} Connected");
         }
 
         private static GameObject MakePrefab()
         {
             var prefab = GameObject.Instantiate(MaJiang.GameMap.GameMapMgr.Instance.uiConfig.MapMenuSettingPanel);
             prefab.SetActive(false);
-            prefab.name = "ArchipelagoSetting";
+            prefab.name = "ArchipelagoConnection";
 
             //var prevComponent = prefab.GetComponent<SettingsPanel>();
             //var component = prefab.AddComponent<ArchipelagoPanel>();
@@ -187,17 +140,14 @@ namespace DemonicMahjongArchipelago
             var uri = GameObject.Instantiate(input);
             uri.transform.SetParent(right);
             uri.name = "Server URI";
-            inputs[0] = uri.GetComponent<TMP_InputField>().textComponent.Cast<TextMeshProUGUI>();
             left.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Server URI";
             var playerName = GameObject.Instantiate(input);
             playerName.transform.SetParent(right);
             playerName.name = "Player Name";
-            inputs[1] = playerName.GetComponent<TMP_InputField>().textComponent.Cast<TextMeshProUGUI>();
             left.GetChild(1).GetComponent<TextMeshProUGUI>().text = "Player Name";
             var password = GameObject.Instantiate(input);
             password.transform.SetParent(right);
             password.name = "Password";
-            inputs[2] = password.GetComponent<TMP_InputField>().textComponent.Cast<TextMeshProUGUI>();
             left.GetChild(2).GetComponent<TextMeshProUGUI>().text = "Password";
             password.GetComponent<TMP_InputField>().contentType = TMP_InputField.ContentType.Password;
 

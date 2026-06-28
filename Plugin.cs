@@ -1,7 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
-using DemonicMahjong.Utils;
 using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.Injection;
@@ -30,7 +29,11 @@ namespace DemonicMahjongArchipelago
             BepinLogger = Log;
             BepinLogger.LogInfo($"Plugin {PLUGIN_GUID} is loaded!");
             ArchipelagoClient = new ArchipelagoClient();
-            GameData.SetClient(ArchipelagoClient);
+            GameData.Init(ArchipelagoClient);
+
+            //Injections
+
+            ClassInjector.RegisterTypeInIl2Cpp<GameData.SaveData>();
 
             harmonyPatches();
 

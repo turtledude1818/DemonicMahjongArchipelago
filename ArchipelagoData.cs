@@ -26,7 +26,7 @@ public class ArchipelagoData
     /// seed for this archipelago data. Can be used when loading a file to verify the session the player is trying to
     /// load is valid to the room it's connecting to.
     /// </summary>
-    private string seed;
+    internal string Seed;
 
     private Dictionary<string, object> slotData;
 
@@ -56,7 +56,8 @@ public class ArchipelagoData
     public void SetupSession(Dictionary<string, object> roomSlotData, string roomSeed)
     {
         slotData = roomSlotData;
-        seed = roomSeed;
+        Seed = roomSeed;
+        GameData.Seed = roomSeed;
     }
 
     /// <summary>
