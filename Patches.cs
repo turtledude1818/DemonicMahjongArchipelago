@@ -36,24 +36,26 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Playables;
 using UnityEngine.SceneManagement;
+using UnityEngine.TextCore.Text;
 
 namespace DemonicMahjongArchipelago
 {
     class BlockingPatches
     {
-        [HarmonyPatch(typeof(MaJiang.GM.Saver), "UnlockRelic", new Type[] { typeof(Il2CppStructArray<RelicId>) })]
+
+        [HarmonyPatch(typeof(MaJiang.GM.Saver), "UnlockRelic", new Type[] { typeof(RelicId[]) })]
         [HarmonyPrefix]
-        static bool blockRelicUnlock(ref Il2CppStructArray<RelicId> relicIds)
+        static bool blockRelicUnlock(Saver __instance, RelicId[] relicIds)
         {
-            foreach(RelicId id in relicIds)
+            foreach (RelicId id in relicIds)
             {
                 ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock of relic {id}");
             }
             return false;
         }
-        [HarmonyPatch(typeof(MaJiang.GM.Saver), "UnlockLingYong", new Type[] { typeof(Il2CppStructArray<XiaoChou>) })]
+        [HarmonyPatch(typeof(MaJiang.GM.Saver), "UnlockLingYong", new Type[] { typeof(XiaoChou[]) })]
         [HarmonyPrefix]
-        static bool blockLingYongUnlock(ref Il2CppStructArray<XiaoChou> lingYongIds)
+        static bool blockLingYongUnlock(Saver __instance, XiaoChou[] lingYongIds)
         {
             foreach (XiaoChou id in lingYongIds)
             {
@@ -61,11 +63,27 @@ namespace DemonicMahjongArchipelago
             }
             return false;
         }
-        [HarmonyPatch(typeof(MaJiang.AccountGameDataHandle), "TryAddCharacter")]
+        //[HarmonyPatch(typeof(MaJiang.AccountGameDataHandle), "TryAddCharacter")]
+        //[HarmonyPrefix]
+        //static bool blockCharacterUnlock(AccountGameDataHandle __instance, bool __result, CharacterID characterId
+        //    ,bool writeSave = true)
+        //{
+        //    ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock of character {characterId}");
+        //    __result = !GameData.ReceivedCharacters.Contains( characterId );
+        //    return false;
+        //}
+        [HarmonyPatch(typeof(GameMapMgr), "TryCharacterUnlock")]
         [HarmonyPrefix]
-        static bool blockCharacterUnlock(ref CharacterID characterId)
+        static bool blockDiffCharUnlock(CharacterID characterID, bool useUnlockEffect)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock of character {characterId}");
+            ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock of character {characterID}");
+            return false;
+        }
+        [HarmonyPatch(typeof(AchievementRuntime), "TryUnlockProp")]
+        [HarmonyPrefix]
+        static bool blockAchievementPropUnlock(AchievementRuntime __instance)
+        {
+            ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock from achievement {__instance.Name}");
             return false;
         }
     }
@@ -89,7 +107,7 @@ namespace DemonicMahjongArchipelago
             }
             return false;
         }
-
+        
         /// <summary>
         /// Reimplemenation of base method to choose unlocked characters
         /// </summary>
@@ -151,7 +169,6 @@ namespace DemonicMahjongArchipelago
             ref object __result)
             //ref Il2CppSystem.Collections.Generic.IEnumerable<RelicDisplay> __result)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo("Getting Available List");
             var list = new Il2CppSystem.Collections.Generic.List<RelicDisplay>();
             var totallist = MaJiang.GlobalDataCenter.Instance.staticDataMgr._relicDisplayList;
             for (int i = 0; i < totallist.Count; i++)
@@ -188,7 +205,6 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         public static bool XiaoChouNeedUnLockedListGet(int index, ref XiaoChou __result)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo($"Getting index {index}");
             if (xiaoChouNeedUnlocked == null) makeStartingFigurines();
             __result = xiaoChouNeedUnlocked[index];
             return false;
@@ -214,7 +230,6 @@ namespace DemonicMahjongArchipelago
         public static bool XiaoChouNeedUnLockedListEnumerator(
             ref object __result)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo("Getting XiaoChou Enumerator");
             if (xiaoChouNeedUnlocked == null) makeStartingFigurines();
             __result = xiaoChouNeedUnlockedList.GetEnumerator();
             return false;
@@ -237,7 +252,6 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         public static bool RelicNeedUnLockedListGet(int index, ref int __result)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo($"Getting index {index}");
             if (relicNeedUnlocked == null) makeStartingRelics();
             __result = relicNeedUnlocked[index];
             return false;
@@ -264,7 +278,6 @@ namespace DemonicMahjongArchipelago
         public static bool RelicIdNeedUnLockedListEnumerator(
             ref object __result)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo("Getting Relic Enumerator");
             if (relicNeedUnlocked == null) makeStartingRelics();
             __result = relicNeedUnlockedList.GetEnumerator();
             return false;
@@ -302,18 +315,18 @@ namespace DemonicMahjongArchipelago
     {
         [HarmonyPatch(typeof(Saver), "PlayFanNewFoundAdd")]
         [HarmonyPostfix]
-        public static void NewYaku(FanZhong yaku)
+        public static void NewYaku(FanZhong fanZhong)
         {
-            GameData.checkLocation(yaku, "Yaku");
-            GameData.CheckedYaku.Add(yaku);
+            GameData.checkLocation(fanZhong, "Yaku");
+            GameData.CheckedYaku.Add(fanZhong);
         }
 
         [HarmonyPatch(typeof(AchievementRuntime), "Get")]
         [HarmonyPostfix]
-        public static void NewAchievement(AchievementRuntime achievement)
+        public static void NewAchievement(AchievementRuntime __instance)
         {
-            GameData.checkLocation(achievement.OnlyId, "Achievement");
-            GameData.CheckedAchievements.Add(achievement.OnlyId);
+            GameData.checkLocation(__instance.OnlyId, "Achievement");
+            GameData.CheckedAchievements.Add(__instance.OnlyId);
         }
 
         [HarmonyPatch(typeof(GameMapMgr), "GameFinish")]
@@ -395,6 +408,12 @@ namespace DemonicMahjongArchipelago
         {
             GameData.InBattle = true;
             return true;
+        }
+        [HarmonyPatch(typeof(GameManager), "SaveGameAsync")]
+        [HarmonyPostfix]
+        public static void SaveGame()
+        {
+            GameData.SaveAsync();
         }
     }
     class UIPatches

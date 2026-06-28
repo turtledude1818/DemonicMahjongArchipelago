@@ -37,6 +37,8 @@ public class ArchipelagoClient
 
         try
         {
+            ArchipelagoPlugin.BepinLogger.LogInfo(ServerData.Uri == "204.111.131.32:38281");
+            //ServerData.Uri = "204.111.131.32:38281";
             session = ArchipelagoSessionFactory.CreateSession(ServerData.Uri);
             SetupSession();
         }
@@ -67,8 +69,17 @@ public class ArchipelagoClient
         try
         {
             // it's safe to thread this function call but unity notoriously hates threading so do not use excessively
-            ThreadPool.QueueUserWorkItem(
-                _ => HandleConnectResult(
+            //ThreadPool.QueueUserWorkItem(
+            //    _ => HandleConnectResult(
+            //        session.TryConnectAndLogin(
+            //            Game,
+            //            ServerData.SlotName,
+            //            ItemsHandlingFlags.AllItems, 
+            //            new Version(APVersion),
+            //            password: ServerData.Password,
+            //            requestSlotData: true // ServerData.NeedSlotData
+            //        )));
+            HandleConnectResult(
                     session.TryConnectAndLogin(
                         Game,
                         ServerData.SlotName,
@@ -76,7 +87,7 @@ public class ArchipelagoClient
                         new Version(APVersion),
                         password: ServerData.Password,
                         requestSlotData: true // ServerData.NeedSlotData
-                    )));
+                    ));
         }
         catch (Exception e)
         {
@@ -109,7 +120,7 @@ public class ArchipelagoClient
             ArchipelagoPlugin.BepinLogger.LogMessage(outText);
             //ArchipelagoConsole.LogMessage(outText);
 
-            //GameData.onConnectSetup(success);
+            GameData.onConnectSetup(success);
         }
         else
         {
@@ -137,7 +148,7 @@ public class ArchipelagoClient
         session?.Socket.DisconnectAsync();
         session = null;
         Authenticated = false;
-        //await GameData.SaveAsync();
+        await GameData.SaveAsync();
     }
 
     public void SendMessage(string message)

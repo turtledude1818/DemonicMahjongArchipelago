@@ -1,7 +1,11 @@
 ﻿using Archipelago.MultiClient.Net;
 using Archipelago.MultiClient.Net.Models;
 using BepInEx.Logging;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
+using HarmonyLib;
 using I2.Loc.SimpleJSON;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using MaJiang;
 using MaJiang.Achievement.Runtime;
 using MaJiang.DataConstruct.Character;
@@ -18,6 +22,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
 namespace DemonicMahjongArchipelago
 {
@@ -43,7 +48,8 @@ namespace DemonicMahjongArchipelago
         internal static string Seed;
         public static int LastProcessedItem = -1;
         //public static List<(object, Type)> unProcessedItems = new List<(object item, Type type)>();
-        public static List<ItemInfo> UnprocessedItems = new List<ItemInfo>();
+        public static Queue<ItemInfo> UnprocessedItems = new Queue<ItemInfo>();
+        private static Queue<ItemInfo> _failedItems = new Queue<ItemInfo>();
 
         // Items
         public static HashSet<RelicId> ReceivedRelics = new HashSet<RelicId>();
@@ -59,6 +65,9 @@ namespace DemonicMahjongArchipelago
         public static Dictionary<CharacterID, int> MaxStages = new Dictionary<CharacterID, int>();
         public static HashSet<string> CheckedAchievements = new HashSet<string>();
         public static int HighestDifficulty = 0;
+
+
+        private static bool _connectSetupComplete = false;
 
         public static void checkLocation(object location, string type, int misc = 0)
         {
@@ -86,17 +95,31 @@ namespace DemonicMahjongArchipelago
             Client.checkLocation(id);
         }
 
+        public static void processUnprocessed()
+        {
+            while (UnprocessedItems.Count > 0)
+            {
+                receiveItem(UnprocessedItems.Dequeue(), true);
+            }
+            UnprocessedItems = _failedItems;
+            _failedItems = new Queue<ItemInfo>();
+        }
+
         public static void receiveItem(ItemInfo item, bool fromUnprocessed = false)
         {
+            if (item == null) throw new ArgumentNullException("item");
             int id = (int)item.ItemId;
+
+            if (!_connectSetupComplete)
+            {
+                (fromUnprocessed ? _failedItems : UnprocessedItems).Enqueue(item);
+                return;
+            }
             if (!InGame)
             {
                 if (id >= ItemNames.FILLER_OFFSET)
                 {
-                    if (!fromUnprocessed)
-                    {
-                        UnprocessedItems.Add(item);
-                    }
+                    (fromUnprocessed ? _failedItems : UnprocessedItems).Enqueue(item);
                     return;
                 }
             }
@@ -104,22 +127,26 @@ namespace DemonicMahjongArchipelago
             {
                 var character = ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1];
                 ReceivedCharacters.Add(ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1]);
-                ReversePatches.TryAddCharacter(AccountGameDataHandle.Instance, character, true);
+                //ReversePatches.TryAddCharacter(AccountGameDataHandle.Instance, character, true);
+                UnlockItem(character, typeof(CharacterID));
             }
             else if (id < ItemNames.RELIC_OFFSET)
             {
                 var figurine = ItemNames.FigurineIds[id - ItemNames.FIGURINE_OFFSET - 1];
                 ReceivedFigurines.Add(figurine);
-                ReversePatches.UnlockLingYong(SaverInstance, new[] { figurine });
+                //ReversePatches.UnlockLingYong(GameManager.Instance.Saver, new[] { figurine });
+                UnlockItem(figurine, typeof(XiaoChou));
             }
             else if (id < ItemNames.FILLER_OFFSET)
             {
                 var relic = ItemNames.RelicIds[id - ItemNames.RELIC_OFFSET - 1];
                 ReceivedRelics.Add(relic);
-                ReversePatches.UnlockRelic(SaverInstance, new[] { relic });
+                //ReversePatches.UnlockRelic(GameManager.Instance.Saver, new[] { relic });
+                UnlockItem(relic, typeof(RelicId));
             }
             else
             {
+                return;
                 var name = item.ItemName;
                 if (name == null) throw new ArgumentNullException("item.name", "Item name could not be resolved");
 
@@ -152,6 +179,59 @@ namespace DemonicMahjongArchipelago
                 }
             }
         }
+        // Have to reimplement rather than call game functions because of AccessViolationExceptions
+        public static void UnlockItem(object item, Type type)
+        {
+            if (type == typeof(CharacterID))
+            {
+                var characterId = (CharacterID)item;
+                var __instance = AccountGameDataHandle.Instance;
+
+                ArchipelagoPlugin.BepinLogger.LogInfo($"Unlocking Character {characterId}");
+
+                var saver = GameManager.Instance.Saver;
+                if (saver._freeModeUnLockCharacterList.Contains(characterId)) return;
+                saver._freeModeUnLockCharacterList.Add(characterId);
+
+                // Reimplement AddCharacterSaverData(characterId, writeSave)
+                var saveData = new CharacterSaveData(characterId);
+                saveData.highestDifficulty = 0;
+                var roleSet = __instance.gameData.achievements.ownedRoleSet;
+                roleSet.AddItem(saveData);
+                ArchipelagoPlugin.BepinLogger.LogInfo($"Character {characterId} Unlocked");
+            }
+            else if (type == typeof(XiaoChou))
+            {
+                var lingYongId = (XiaoChou)item;
+                var __instance = SaverInstance;
+                
+                if (!__instance._unlockedLingYongList.Contains(lingYongId))
+                {
+                    __instance._unlockedLingYongList.Add(lingYongId);
+                    var curr = __instance.CurrentUnlockedLingYongList.Cast<Il2CppSystem.Collections.Generic.List<int>>();
+                    curr.Add(((int)lingYongId));
+                    __instance.CurrentUnlockedLingYongList =
+                        curr.Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<int>>();
+                }
+            }
+            else if (type == typeof(RelicId))
+            {
+                var relicId = ((RelicId)item).ToString();
+                var __instance = SaverInstance;
+
+                if (__instance._unlockedRelicList.Contains(relicId))
+                {
+
+                    __instance._unlockedRelicList.Add(relicId);
+                    var curr = __instance.CurrentUnlockedRelicList.Cast<Il2CppSystem.Collections.Generic.List<string>>();
+                    curr.Add(relicId);
+                    __instance.CurrentUnlockedRelicList =
+                        curr.Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<string>>();
+                }
+
+                return;
+            }
+        }
 
         public static void setUpGameData()
         {
@@ -161,13 +241,6 @@ namespace DemonicMahjongArchipelago
             SaverInstance = GameManagerInstance.Saver;
             var index = GameManagerInstance.GameSaverUtil._saverPath.LastIndexOf('/');
             _savePath = GameManagerInstance.GameSaverUtil._saverPath[..index];
-
-            // Change game values
-            //SaverInstance._freeModeUnLockCharacterList = new Il2CppSystem.Collections.Generic.List<CharacterID>();
-            //foreach(CharacterID character in ReceivedCharacters)
-            //{
-            //    SaverInstance._freeModeUnLockCharacterList.Add(character);
-            //}
         }
         public static void enterGame()
         {
@@ -175,10 +248,7 @@ namespace DemonicMahjongArchipelago
             Difficulty = MaJiang.Difficulty.DifficultyManager.Instance.CurDifficulty.index;
             Character = SaverInstance.LastUsedCharacterID;
             BepinLogger.LogInfo($"Entering game as {ItemNames.CharacterNames[Character]} on difficulty {Difficulty}");
-            foreach (var item in UnprocessedItems)
-            {
-                receiveItem(item, true);
-            }
+            processUnprocessed();
         }
 
         public static CharacterID[] UnlockedChars()
@@ -209,9 +279,18 @@ namespace DemonicMahjongArchipelago
 
         public static async Task onConnectSetup(LoginSuccessful success)
         {
-            await GameData.LoadSaveAsync();
+            //await GameData.LoadSaveAsync();
             if (_saveData == null)
             {
+                // Change game values (TODO: this will wipe character unlock progress, check when to apply)
+                SaverInstance._freeModeUnLockCharacterList = new Il2CppSystem.Collections.Generic.List<CharacterID>();
+                AccountGameDataHandle.Instance.freeModeCharacterIDs = SaverInstance._freeModeUnLockCharacterList
+                    .AsReadOnly().Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<CharacterID>>();
+                AccountGameDataHandle.Instance.gameData.achievements.ownedRoleSet =
+                    new Il2CppSystem.Collections.Generic.List<CharacterSaveData>()
+                    .ToArray().Cast<Il2CppReferenceArray<CharacterSaveData>>();
+
+
                 // Get/Set Options
                 Dictionary<string, object> options = new Dictionary<string, object>();
 
@@ -225,6 +304,8 @@ namespace DemonicMahjongArchipelago
                     MinDifficulty = 0;
                 }
             }
+            _connectSetupComplete = true;
+            processUnprocessed();
         }
 
         internal class SaveData : MonoBehaviour
@@ -238,7 +319,8 @@ namespace DemonicMahjongArchipelago
             private HashSet<string> _checkedAchievements;
             private int _highestDifficulty;
             private int _minDifficulty;
-            private List<ItemInfo> _unprocessedItems;
+            private Queue<ItemInfo> _unprocessedItems;
+            private Queue<ItemInfo> _failedItems;
 
             public void LoadData()
             {
@@ -252,6 +334,7 @@ namespace DemonicMahjongArchipelago
                 GameData.HighestDifficulty = _highestDifficulty;
                 GameData.MinDifficulty = _minDifficulty;
                 GameData.UnprocessedItems = _unprocessedItems;
+                GameData._failedItems = _failedItems;
 
                 ArchipelagoClient.ServerData.Index = _lastProcessedItem;
             }
@@ -266,6 +349,7 @@ namespace DemonicMahjongArchipelago
                 this._highestDifficulty = GameData.HighestDifficulty;
                 this._minDifficulty = GameData.MinDifficulty;
                 this._unprocessedItems = GameData.UnprocessedItems;
+                this._failedItems = GameData._failedItems;
             }
         }
 

@@ -42,14 +42,16 @@ namespace DemonicMahjongArchipelago
         public static void harmonyPatches()
         {
             var harmony = new Harmony("DMJ");
+            harmony.PatchAll(typeof(ReversePatches));
+
             harmony.PatchAll(typeof(BlockingPatches));
             harmony.PatchAll(typeof(OverridePatches));
-            //harmony.PatchAll(typeof(CheckingPatches));
-            harmony.PatchAll(typeof(ReversePatches));
-            //harmony.PatchAll(typeof(DebugPatches
+            harmony.PatchAll(typeof(CheckingPatches));
             harmony.PatchAll(typeof(GameSetupPatches));
             harmony.PatchAll(typeof(UIPatches));
             harmony.PatchAll(typeof(ReplaceFieldPatches));
+
+            //harmony.PatchAll(typeof(DebugPatches));
         }
     }
 }

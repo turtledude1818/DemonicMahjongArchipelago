@@ -68,7 +68,6 @@ namespace DemonicMahjongArchipelago
                 prefab = MakePrefab();
             }
             Il2CppSystem.Object[] openParams = { optionMenu };
-            BepinLogger.LogInfo("Clicked Archipelago button");
             // The compiler will crash if the original is used for some reason, so use a Reverse Patch
             ReversePatches.OpenUI(PopUIManager.Instance, prefab, openParams);
             GameObject.Destroy(prefab);
@@ -101,9 +100,11 @@ namespace DemonicMahjongArchipelago
         }
         public static void onConnectClicked()
         {
-            ArchipelagoClient.ServerData.Uri = inputs[0].text;
-            ArchipelagoClient.ServerData.SlotName = inputs[1].text;
-            ArchipelagoClient.ServerData.Password = inputs[2].text;
+            //var uri = inputs[0].text.Trim();
+            //ArchipelagoClient.ServerData.Uri = uri[..(uri.IndexOf(':')+6)];
+            ArchipelagoClient.ServerData.Uri = inputs[0].text[..^1];//.Replace("\u200b", ""); ;
+            ArchipelagoClient.ServerData.SlotName = inputs[1].text[..^1];//.Replace("\u200b", "");
+            ArchipelagoClient.ServerData.Password = inputs[2].text[..^1];//.Replace("\u200b", "");
             BepinLogger.LogMessage("Connecting to Server");
             BepinLogger.LogMessage($"URI: {inputs[0].text}\n SlotName: {inputs[1].text}\n Password: {inputs[2].text}");
             ArchipelagoPlugin.ArchipelagoClient.Connect();
