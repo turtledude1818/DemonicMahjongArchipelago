@@ -38,8 +38,8 @@ namespace DemonicMahjongArchipelago
 			{CharacterID.HeiWuChang, "Black Impermanence"},
 			{CharacterID.BaiWuChang, "White Impermanence"},
 			{CharacterID.DiTing, "Diting"},
-			{CharacterID.NiuTouMaMian, "Abang Ox-head & Aqi Horse-face"},
-			{CharacterID.HeiBaiWuChang, "Black & White Impermanence"},
+			//{CharacterID.NiuTouMaMian, "Abang Ox-head & Aqi Horse-face"},		// Not Implemented?
+			//{CharacterID.HeiBaiWuChang, "Black & White Impermanence"},		// Not Implemented?
 			{CharacterID.MengPo, "Meng Po"},
 			{CharacterID.QinGuangWang, "King Qinguang"},
 			{CharacterID.YanLuoWang, "King Yama"},
@@ -48,7 +48,7 @@ namespace DemonicMahjongArchipelago
 			{CharacterID.FaESi, "Sin Judge Zhong"},
 			{CharacterID.HenDuJiangShi, "ToxTox"},
 			{CharacterID.JiKeNvGui, "Craving Kae"},
-			//{CharacterID.LouCha, "AAAA"},									// Not Implemented?
+			//{CharacterID.LouCha, "AAAA"},										// Not Implemented?
 			{CharacterID.ShangShanSi, "Virtue Judge Wei"},
 			{CharacterID.YinLvSi, "Lawkeeper Cui"},
 			//{CharacterID.DiZangWangPuSa02, ""},								// Not Implemented?

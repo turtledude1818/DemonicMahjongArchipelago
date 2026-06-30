@@ -8,6 +8,8 @@ using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using MaJiang;
 using MaJiang.Achievement.Runtime;
+using MaJiang.DataConstruct;
+using MaJiang.DataConstruct.Achievement;
 using MaJiang.DataConstruct.Character;
 using MaJiang.DataConstruct.MaJiang;
 using MaJiang.DataConstruct.Relic;
@@ -67,7 +69,8 @@ namespace DemonicMahjongArchipelago
         public static int HighestDifficulty = 0;
 
 
-        private static bool _connectSetupComplete = false;
+        public static bool ConnectSetupComplete = false;
+        private static bool _saving = false;
 
         public static void checkLocation(object location, string type, int misc = 0)
         {
@@ -95,6 +98,39 @@ namespace DemonicMahjongArchipelago
             Client.checkLocation(id);
         }
 
+        public static void checkAllLocations()
+        {
+            //Yaku
+            var allYaku = SaverInstance.PlayPlayFanNewFound.Cast<Il2CppSystem.Collections.Generic.List<FanZhong>>();
+            foreach (var yaku in allYaku)
+            {
+                checkLocation(yaku, "Yaku");
+            }
+            //Achievements
+            var allAchievements = SaverInstance.CurAchievementGetList.
+                Cast<Il2CppSystem.Collections.Generic.List<AchievementSaveData>>();
+            foreach(var achievement in allAchievements)
+            {
+                checkLocation(achievement.guid, "Achievement");
+            }
+            //Character Full Clear
+            var allCharacterData = SaverInstance.CharacterSaveDataList
+                .Cast<Il2CppSystem.Collections.Generic.List<CharacterSaveData>>();
+            foreach (var character in allCharacterData)
+            {
+                var difficulty = character.highestDifficulty;
+                // Uncleared characters have difficulty as 0
+                if (difficulty > 0 && difficulty > MinDifficulty)
+                {
+                    for (int i = 1; i <= 4; i++)
+                    {
+                        checkLocation(character.CharacterID, "Character", i);
+                    }
+                }
+            }
+
+        }
+
         public static void processUnprocessed()
         {
             while (UnprocessedItems.Count > 0)
@@ -109,17 +145,20 @@ namespace DemonicMahjongArchipelago
         {
             if (item == null) throw new ArgumentNullException("item");
             int id = (int)item.ItemId;
+            var queue = fromUnprocessed ? _failedItems : UnprocessedItems;
 
-            if (!_connectSetupComplete)
+            if (!fromUnprocessed) BepinLogger.LogMessage($"Received {item.ItemName}");
+
+            if (!ConnectSetupComplete)
             {
-                (fromUnprocessed ? _failedItems : UnprocessedItems).Enqueue(item);
+                queue.Enqueue(item);
                 return;
             }
             if (!InGame)
             {
                 if (id >= ItemNames.FILLER_OFFSET)
                 {
-                    (fromUnprocessed ? _failedItems : UnprocessedItems).Enqueue(item);
+                    queue.Enqueue(item);
                     return;
                 }
             }
@@ -187,8 +226,6 @@ namespace DemonicMahjongArchipelago
                 var characterId = (CharacterID)item;
                 var __instance = AccountGameDataHandle.Instance;
 
-                ArchipelagoPlugin.BepinLogger.LogInfo($"Unlocking Character {characterId}");
-
                 var saver = GameManager.Instance.Saver;
                 if (saver._freeModeUnLockCharacterList.Contains(characterId)) return;
                 saver._freeModeUnLockCharacterList.Add(characterId);
@@ -198,7 +235,6 @@ namespace DemonicMahjongArchipelago
                 saveData.highestDifficulty = 0;
                 var roleSet = __instance.gameData.achievements.ownedRoleSet;
                 roleSet.AddItem(saveData);
-                ArchipelagoPlugin.BepinLogger.LogInfo($"Character {characterId} Unlocked");
             }
             else if (type == typeof(XiaoChou))
             {
@@ -219,7 +255,7 @@ namespace DemonicMahjongArchipelago
                 var relicId = ((RelicId)item).ToString();
                 var __instance = SaverInstance;
 
-                if (__instance._unlockedRelicList.Contains(relicId))
+                if (!__instance._unlockedRelicList.Contains(relicId))
                 {
 
                     __instance._unlockedRelicList.Add(relicId);
@@ -241,6 +277,36 @@ namespace DemonicMahjongArchipelago
             SaverInstance = GameManagerInstance.Saver;
             var index = GameManagerInstance.GameSaverUtil._saverPath.LastIndexOf('/');
             _savePath = GameManagerInstance.GameSaverUtil._saverPath[..index];
+
+//#if DEBUG
+//            var all = "\nYaku: \n";
+//            for (int i = 0; i < GlobalStaticDataManagerInstance.FanZhongPayloadList.Count; i++)
+//            {
+//                var fanZhong = GlobalStaticDataManagerInstance.FanZhongPayloadList[i];
+//                int rarity;
+//                var fan = fanZhong.fan;
+//                if (fan <= 8) rarity = 1;
+//                else if (fan <= 16) rarity = 2;
+//                else if (fan <= 32) rarity = 3;
+//                else if (fan <= 64) rarity = 4;
+//                else if (fan <= 88) rarity = 5;
+//                else rarity = 6;
+//                all += $"\t\"{fanZhong.Name}\": {rarity},\n";
+//            }
+//            all += "Relics: \n" ;
+//            for (int i = 0; i < GlobalStaticDataManagerInstance.RelicDisplayTotalList.Count; i++)
+//            {
+//                var relic = GlobalStaticDataManagerInstance.RelicDisplayTotalList[i];
+//                all += $"\t\"{relic.Name}\": {relic.rarity},\n";
+//            }
+//            all += "Figurines: \n";
+//            for (int i = 0; i < GlobalStaticDataManagerInstance.XiaoChouPaiPayloadTotalList.Count; i++)
+//            {
+//                var figurine = GlobalStaticDataManagerInstance.XiaoChouPaiPayloadTotalList[i];
+//                all += $"\t\"{figurine.Name}\": {figurine.rarity},\n";
+//            }
+//            BepinLogger.LogInfo(all);
+//#endif
         }
         public static void enterGame()
         {
@@ -277,18 +343,19 @@ namespace DemonicMahjongArchipelago
             Client = client;
         }
 
-        public static async Task onConnectSetup(LoginSuccessful success)
+        public static async Task OnConnectSetup(LoginSuccessful success)
         {
-            //await GameData.LoadSaveAsync();
+            await GameData.LoadSaveAsync();
+            if (ConnectSetupComplete) return;
             if (_saveData == null)
             {
                 // Change game values (TODO: this will wipe character unlock progress, check when to apply)
-                SaverInstance._freeModeUnLockCharacterList = new Il2CppSystem.Collections.Generic.List<CharacterID>();
-                AccountGameDataHandle.Instance.freeModeCharacterIDs = SaverInstance._freeModeUnLockCharacterList
-                    .AsReadOnly().Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<CharacterID>>();
-                AccountGameDataHandle.Instance.gameData.achievements.ownedRoleSet =
-                    new Il2CppSystem.Collections.Generic.List<CharacterSaveData>()
-                    .ToArray().Cast<Il2CppReferenceArray<CharacterSaveData>>();
+                //SaverInstance._freeModeUnLockCharacterList = new Il2CppSystem.Collections.Generic.List<CharacterID>();
+                //AccountGameDataHandle.Instance.freeModeCharacterIDs = SaverInstance._freeModeUnLockCharacterList
+                //    .AsReadOnly().Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<CharacterID>>();
+                //AccountGameDataHandle.Instance.gameData.achievements.ownedRoleSet =
+                //    new Il2CppSystem.Collections.Generic.List<CharacterSaveData>()
+                //    .ToArray().Cast<Il2CppReferenceArray<CharacterSaveData>>();
 
 
                 // Get/Set Options
@@ -304,81 +371,129 @@ namespace DemonicMahjongArchipelago
                     MinDifficulty = 0;
                 }
             }
-            _connectSetupComplete = true;
+            BepinLogger.LogMessage("Connection setup completed");
+            ConnectSetupComplete = true;
+            for (int i = 0; i <= LastProcessedItem; i++) UnprocessedItems.Dequeue();
             processUnprocessed();
         }
 
-        internal class SaveData : MonoBehaviour
+        internal class SaveData
         {
-            private int _lastProcessedItem;
-            private HashSet<RelicId> _receivedRelics;
-            private HashSet<XiaoChou> _receivedFigurines;
-            private HashSet<CharacterID> _receivedCharacters;
-            private HashSet<FanZhong> _checkedYaku;
-            private Dictionary<CharacterID, int> _maxStages;
-            private HashSet<string> _checkedAchievements;
-            private int _highestDifficulty;
-            private int _minDifficulty;
-            private Queue<ItemInfo> _unprocessedItems;
-            private Queue<ItemInfo> _failedItems;
+            public int LastProcessedItem { get; set; }
+            public HashSet<RelicId> ReceivedRelics{ get; set; }
+            public HashSet<XiaoChou> ReceivedFigurines{ get; set; }
+            public HashSet<CharacterID> ReceivedCharacters{ get; set; }
+            public HashSet<FanZhong> CheckedYaku{ get; set; }
+            public Dictionary<CharacterID, int> MaxStages{ get; set; }
+            public HashSet<string> CheckedAchievements{ get; set; }
+            public int HighestDifficulty{ get; set; }
+            public int MinDifficulty{ get; set; }
+            public int MaxScalingDifficulty {  get; set; }
+            public Queue<ItemInfo> UnprocessedItems{ get; set; }
+            public Queue<ItemInfo> FailedItems{ get; set; }
+
+            // Game save data
+            //private Saver saver;
+
 
             public void LoadData()
             {
-                GameData.LastProcessedItem = _lastProcessedItem;
-                GameData.ReceivedRelics = _receivedRelics;
-                GameData.ReceivedFigurines = _receivedFigurines;
-                GameData.ReceivedCharacters = _receivedCharacters;
-                GameData.CheckedYaku = _checkedYaku;
-                GameData.MaxStages = _maxStages;
-                GameData.CheckedAchievements = _checkedAchievements;
-                GameData.HighestDifficulty = _highestDifficulty;
-                GameData.MinDifficulty = _minDifficulty;
-                GameData.UnprocessedItems = _unprocessedItems;
-                GameData._failedItems = _failedItems;
+                GameData.LastProcessedItem = LastProcessedItem;
+                GameData.ReceivedRelics = ReceivedRelics;
+                GameData.ReceivedFigurines = ReceivedFigurines;
+                GameData.ReceivedCharacters = ReceivedCharacters;
+                GameData.CheckedYaku = CheckedYaku;
+                GameData.MaxStages = MaxStages;
+                GameData.CheckedAchievements = CheckedAchievements;
+                GameData.HighestDifficulty = HighestDifficulty;
+                GameData.MinDifficulty = MinDifficulty;
+                GameData.MaxScalingDifficulty = MaxScalingDifficulty;
+                GameData.UnprocessedItems = UnprocessedItems;
+                GameData._failedItems = FailedItems;
 
-                ArchipelagoClient.ServerData.Index = _lastProcessedItem;
+                ArchipelagoClient.ServerData.Index = LastProcessedItem;
+
+                //Modify game save data
+                //GameData.SaverInstance = saver;
+                //GameManager.Instance.Saver = saver;
             }
             public SaveData() {
-                this._lastProcessedItem = GameData.LastProcessedItem;
-                this._receivedRelics = GameData.ReceivedRelics;
-                this._receivedFigurines= GameData.ReceivedFigurines;
-                this._receivedCharacters= GameData.ReceivedCharacters;
-                this._checkedYaku = GameData.CheckedYaku;
-                this._maxStages = GameData.MaxStages;
-                this._checkedAchievements = GameData.CheckedAchievements;
-                this._highestDifficulty = GameData.HighestDifficulty;
-                this._minDifficulty = GameData.MinDifficulty;
-                this._unprocessedItems = GameData.UnprocessedItems;
-                this._failedItems = GameData._failedItems;
+                this.LastProcessedItem = GameData.LastProcessedItem;
+                this.ReceivedRelics = GameData.ReceivedRelics;
+                this.ReceivedFigurines= GameData.ReceivedFigurines;
+                this.ReceivedCharacters= GameData.ReceivedCharacters;
+                this.CheckedYaku = GameData.CheckedYaku;
+                this.MaxStages = GameData.MaxStages;
+                this.CheckedAchievements = GameData.CheckedAchievements;
+                this.HighestDifficulty = GameData.HighestDifficulty;
+                this.MinDifficulty = GameData.MinDifficulty;
+                this.MaxScalingDifficulty = GameData.MaxScalingDifficulty;
+                this.UnprocessedItems = GameData.UnprocessedItems;
+                this.FailedItems = GameData._failedItems;
+
+                //this._saver = GameData.SaverInstance;
             }
         }
 
         public static async Task SaveAsync()
         {
-            if (_savePath != null)
+            if (_saving || Seed == null) return;
+            try
             {
-                var path = _savePath +$"/{Seed}.json";
-                _saveData = new SaveData();
-
-                await using FileStream source = File.OpenRead(_savePath);
-                await using FileStream destination = File.Create(_savePath + ".bak");
-                await source.CopyToAsync(destination);
-                await using FileStream createStream = File.Create(_savePath);
-                try
+                _saving = true;
+                ArchipelagoPlugin.BepinLogger.LogMessage("Saving Archipelago World");
+                if (_savePath != null)
                 {
-                    await JsonSerializer.SerializeAsync(createStream, _saveData);
-                }
-                catch (Exception)
-                {
-                    BepinLogger.LogError($"Could not save file {_saveData}");
-                }
+                    Directory.CreateDirectory(_savePath);
+                    var path = _savePath + $"/{Seed}.json";
+                    _saveData = new SaveData();
+                    if (_saveData == null)
+                    {
+                        BepinLogger.LogError("Couldn't create SaveData");
+                        return;
+                    }
+                    BepinLogger.LogMessage($"Saving to {path}");
 
+                    if (File.Exists(path))
+                    {
+                        BepinLogger.LogMessage("Backing up save");
+                        var backupPath = path + ".bak";
+                        await using FileStream source = File.OpenRead(path);
+                        if (File.Exists(backupPath)) File.Delete(backupPath);
+                        await using FileStream destination = File.Create(backupPath);
+                        File.SetAttributes(backupPath, File.GetAttributes(backupPath) | FileAttributes.Hidden);
+                        await source.CopyToAsync(destination);
+                        await source.DisposeAsync();
+                        await destination.DisposeAsync();
+                        File.Delete(path);
+                    }
+                    await using FileStream createStream = File.Create(path);
+                    try
+                    {
+                        await JsonSerializer.SerializeAsync(createStream, _saveData);
+                        BepinLogger.LogMessage($"Data saved to {path}");
+                    }
+                    catch (Exception e)
+                    {
+                        BepinLogger.LogError($"Could not save file {path}");
+                        BepinLogger.LogError(e);
+                        _saveData = null;
+                    }
+                    await createStream.DisposeAsync();
+                }
+                else
+                {
+                    BepinLogger.LogWarning("Could not save data; Save path not found");
+                }
             }
+            catch(Exception e) { BepinLogger.LogError(e); }
+            finally { _saving = false; }
         }
 
         public static async Task LoadSaveAsync()
         {
-            var path = _savePath + $"/{Seed}.json";
+            // Add empty string to beginning in case _savePath is null
+            var path = "" + _savePath + $"/{Seed}.json";
             if (_savePath != null && File.Exists(path))
             {
                 using FileStream openStream = File.OpenRead(path);
@@ -395,6 +510,7 @@ namespace DemonicMahjongArchipelago
                     BepinLogger.LogError($"Could not read save data from file {path}");
                 }
             }
+            else if (_savePath == null) BepinLogger.LogWarning("Save path not found");
         }
     }
 }

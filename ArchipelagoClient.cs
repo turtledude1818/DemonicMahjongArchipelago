@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,8 +38,6 @@ public class ArchipelagoClient
 
         try
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo(ServerData.Uri == "204.111.131.32:38281");
-            //ServerData.Uri = "204.111.131.32:38281";
             session = ArchipelagoSessionFactory.CreateSession(ServerData.Uri);
             SetupSession();
         }
@@ -120,7 +119,7 @@ public class ArchipelagoClient
             ArchipelagoPlugin.BepinLogger.LogMessage(outText);
             //ArchipelagoConsole.LogMessage(outText);
 
-            GameData.onConnectSetup(success);
+            GameData.OnConnectSetup(success);
         }
         else
         {
@@ -142,7 +141,7 @@ public class ArchipelagoClient
     /// <summary>
     /// something went wrong, or we need to properly disconnect from the server. cleanup and re null our session
     /// </summary>
-    private async Task Disconnect()
+    internal async Task Disconnect()
     {
        ArchipelagoPlugin.BepinLogger.LogDebug("disconnecting from server...");
         session?.Socket.DisconnectAsync();

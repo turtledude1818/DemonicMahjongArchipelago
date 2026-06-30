@@ -90,6 +90,14 @@ namespace DemonicMahjongArchipelago
             }
             connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
             connectButton.GetComponent<Button>().onClick.AddListener(new Action(onConnectClicked));
+            var disconnectButton = GameObject.Find("DisconnectButton");
+            if (disconnectButton == null)
+            {
+                BepinLogger.LogInfo("Couldn't find Disconnect Button");
+                return;
+            }
+            disconnectButton.GetComponent<Button>().onClick.RemoveAllListeners();
+            disconnectButton.GetComponent<Button>().onClick.AddListener(new Action(onDisconnectClicked));
 
             inputs[0] = GameObject.Find("Server URI").GetComponent<TMP_InputField>()
                 .textComponent.Cast<TextMeshProUGUI>();
@@ -100,15 +108,18 @@ namespace DemonicMahjongArchipelago
         }
         public static void onConnectClicked()
         {
-            //var uri = inputs[0].text.Trim();
-            //ArchipelagoClient.ServerData.Uri = uri[..(uri.IndexOf(':')+6)];
             ArchipelagoClient.ServerData.Uri = inputs[0].text[..^1];//.Replace("\u200b", ""); ;
             ArchipelagoClient.ServerData.SlotName = inputs[1].text[..^1];//.Replace("\u200b", "");
             ArchipelagoClient.ServerData.Password = inputs[2].text[..^1];//.Replace("\u200b", "");
-            BepinLogger.LogMessage("Connecting to Server");
-            BepinLogger.LogMessage($"URI: {inputs[0].text}\n SlotName: {inputs[1].text}\n Password: {inputs[2].text}");
+            //BepinLogger.LogMessage("Connecting to Server");
+            //BepinLogger.LogMessage($"URI: {inputs[0].text}\n SlotName: {inputs[1].text}\n Password: {inputs[2].text}");
             ArchipelagoPlugin.ArchipelagoClient.Connect();
-            BepinLogger.LogMessage($"Status: {(ArchipelagoClient.Authenticated ? "" : "Not")} Connected");
+            //BepinLogger.LogMessage($"Status: {(ArchipelagoClient.Authenticated ? "" : "Not")} Connected");
+        }
+
+        public static void onDisconnectClicked()
+        {
+            ArchipelagoPlugin.ArchipelagoClient.Disconnect();
         }
 
         private static GameObject MakePrefab()
@@ -157,11 +168,9 @@ namespace DemonicMahjongArchipelago
             connectButton.name = "ConnectButton";
             Component.Destroy(connectButton.transform.GetChild(0).GetComponent<Localize>());
             connectButton.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Connect";
-            connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
-            connectButton.GetComponent<Button>().onClick.AddListener(new Action(onConnectClicked));
-            //var disconnectButton = GameObject.Instantiate(button, left);
-            //disconnectButton.name = "DisconnectButton";
-            //disconnectButton.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Disconnect";
+            var disconnectButton = GameObject.Instantiate(connectButton, left);
+            disconnectButton.name = "DisconnectButton";
+            disconnectButton.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Disconnect";
 
             GameObject.Destroy(input);
             Component.Destroy(title.GetComponent<Localize>());

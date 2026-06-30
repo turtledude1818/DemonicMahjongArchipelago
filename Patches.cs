@@ -286,24 +286,24 @@ namespace DemonicMahjongArchipelago
 
     class ReversePatches
     {
-        [HarmonyReversePatch]
-        [HarmonyPatch(typeof(Saver), "UnlockRelic", new Type[] {typeof(Il2CppStructArray<RelicId>) })]
-        public static void UnlockRelic(object __instance, Il2CppStructArray<RelicId> relicIds)
-        {
-            throw new NotImplementedException();
-        }
-        [HarmonyReversePatch]
-        [HarmonyPatch(typeof(Saver), "UnlockLingYong", new Type[] { typeof(Il2CppStructArray<XiaoChou>) })]
-        public static void UnlockLingYong(object __instance, Il2CppStructArray<XiaoChou> lingYongIds)
-        {
-            throw new NotImplementedException();
-        }
-        [HarmonyReversePatch]
-        [HarmonyPatch(typeof(AccountGameDataHandle), "TryAddCharacter")]
-        public static bool TryAddCharacter(object __instance, CharacterID characterId, bool writeSave = true)
-        {
-            throw new NotImplementedException();
-        }
+        //[HarmonyReversePatch]
+        //[HarmonyPatch(typeof(Saver), "UnlockRelic", new Type[] {typeof(Il2CppStructArray<RelicId>) })]
+        //public static void UnlockRelic(object __instance, Il2CppStructArray<RelicId> relicIds)
+        //{
+        //    throw new NotImplementedException();
+        //}
+        //[HarmonyReversePatch]
+        //[HarmonyPatch(typeof(Saver), "UnlockLingYong", new Type[] { typeof(Il2CppStructArray<XiaoChou>) })]
+        //public static void UnlockLingYong(object __instance, Il2CppStructArray<XiaoChou> lingYongIds)
+        //{
+        //    throw new NotImplementedException();
+        //}
+        //[HarmonyReversePatch]
+        //[HarmonyPatch(typeof(AccountGameDataHandle), "TryAddCharacter")]
+        //public static bool TryAddCharacter(object __instance, CharacterID characterId, bool writeSave = true)
+        //{
+        //    throw new NotImplementedException();
+        //}
         [HarmonyReversePatch]
         [HarmonyPatch(typeof(PopUIManager), "OpenUI", typeof(GameObject), typeof(Il2CppReferenceArray<Il2CppSystem.Object>))]
         public static IManagedUI OpenUI(PopUIManager __instance, GameObject prefab, Il2CppReferenceArray<Il2CppSystem.Object> openParams = null)
@@ -351,16 +351,16 @@ namespace DemonicMahjongArchipelago
             return true;
         }
 
-        [HarmonyPatch(typeof(MapDataManager), "NextSection")]
+        [HarmonyPatch(typeof(MapDataManager), "NextLevel")]
         [HarmonyPrefix]
-        public static bool ClearSection(MapDataManager __instance)
+        public static bool ClearLevel(MapDataManager __instance)
         {
-            var section = __instance.CurSectionNo;
+            var level = __instance.CurLevelNo;
             if (GameData.Difficulty > GameData.MinDifficulty &&
-                    GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < section)
+                    GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < level)
             {
-                GameData.checkLocation(GameData.Character, "Character", section);
-                GameData.MaxStages[GameData.Character] = section;
+                GameData.checkLocation(GameData.Character, "Character", level);
+                GameData.MaxStages[GameData.Character] = level;
             }
             return true;
         }
@@ -413,7 +413,16 @@ namespace DemonicMahjongArchipelago
         [HarmonyPostfix]
         public static void SaveGame()
         {
-            GameData.SaveAsync();
+            if (ArchipelagoClient.Authenticated) GameData.SaveAsync();
+        }
+        [HarmonyPatch(typeof(GameManager), "OnApplicationQuit")]
+        [HarmonyPrefix]
+        public static bool OnQuit()
+        {
+            Task.Run(async () => await GameData.SaveAsync())
+                .GetAwaiter()
+                .GetResult();
+            return true;
         }
     }
     class UIPatches

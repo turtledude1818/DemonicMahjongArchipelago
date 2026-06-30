@@ -10,6 +10,7 @@ using System;
 using System.Linq;
 using MaJiang.DataConstruct.MaJiang;
 using MaJiang.Achievement.Runtime;
+using Archipelago.MultiClient.Net.Helpers;
 
 namespace DemonicMahjongArchipelago;
 

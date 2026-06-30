@@ -33,7 +33,7 @@ namespace DemonicMahjongArchipelago
 
             //Injections
 
-            ClassInjector.RegisterTypeInIl2Cpp<GameData.SaveData>();
+            //ClassInjector.RegisterTypeInIl2Cpp<GameData.SaveData>();
 
             harmonyPatches();
 
