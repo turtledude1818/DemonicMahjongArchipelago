@@ -186,33 +186,44 @@ namespace DemonicMahjongArchipelago
             }
             else
             {
-                return;
                 var name = item.ItemName;
                 if (name == null) throw new ArgumentNullException("item.name", "Item name could not be resolved");
 
+                var type = name[(name.LastIndexOf(' ') + 1)..];
+                int value;
+
                 if (name[..name.IndexOf(' ')] == "Lose")
                 {
-                    BepinLogger.LogWarning("Haven't implemented trap items");
+                    if (!int.TryParse(name[(name.IndexOf(' ') + 1)..(name.LastIndexOf(' '))], out value))
+                    {
+                        throw new NotImplementedException($"{name} is not a valid item");
+                    }
+                    value *= -1;
+                    //BepinLogger.LogWarning("Haven't implemented trap items");
                 }
-
-                var type = name[(name.LastIndexOf(' ')+1)..];
-                if (!int.TryParse(name[..(name.IndexOf(' '))], out int value))
+                else
                 {
-                    throw new NotImplementedException($"{name} is not a valid item");
+                    if (!int.TryParse(name[..(name.IndexOf(' '))], out value))
+                    {
+                        throw new NotImplementedException($"{name} is not a valid item");
+                    }
                 }
                 switch (type)
                 {
                     case "Gold":
                         GlobalDataCenter.Instance.SetData(GlobalDataType.Coins,
-                            GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Coins) + value, null);
+                            Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Coins) + value, 0), null);
                         break;
                     case "Energy":
                         GlobalDataCenter.Instance.SetData(GlobalDataType.Soul,
-                            GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Soul) + value, null);
+                            Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Soul) + value, 0), null);
                         break;
-                    case "HP:":
+                    case "HP":
                         GlobalDataCenter.Instance.SetData(GlobalDataType.Hp,
-                            GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Hp) + value, null);
+                            Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Hp) + value, 0), null);
+                        break;
+                    case "Essence":
+                        AccountGameDataHandle.Instance.UpdateToken(MaJiang.TokenStore.TokenType.LowToken, value);
                         break;
                     default:
                         throw new NotImplementedException($"{name} is not a valid item");
