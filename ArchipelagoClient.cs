@@ -201,7 +201,9 @@ public class ArchipelagoClient
     /// <param name="reason"></param>
     private void OnSessionSocketClosed(string reason)
     {
-       ArchipelagoPlugin.BepinLogger.LogError($"Connection to Archipelago lost: {reason}");
+        ArchipelagoPlugin.BepinLogger.LogError($"Connection to Archipelago lost: {reason}");
         Disconnect();
+
+        ArchipelagoUI.CreateInfoPanel("Disconnected", "Client has been disconnected from archipelago server.", true);
     }
 }

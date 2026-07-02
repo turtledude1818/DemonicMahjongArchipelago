@@ -184,7 +184,7 @@ namespace DemonicMahjongArchipelago
             return prefab;
         }
 
-        public static void CreateInfoPanel(string title, string message)
+        public static void CreateInfoPanel(string title, string message, bool reconnect = false)
         {
             var popup = GameObject.Instantiate(GameMapMgr.Instance.uiConfig.commonPopUp);
             popup.name = "NotConnectedPopup";
@@ -195,12 +195,26 @@ namespace DemonicMahjongArchipelago
             var textObject = panel.Find("TextContent");
             Component.Destroy(textObject.GetComponent<Localize>());
             textObject.GetComponent<TextMeshProUGUI>().text = message;
-            var button = panel.Find("FunctionButtons").Find("Left");
+            var button = panel.Find("FunctionButtons").Find("Right");
             button.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Confirm";
+            if (reconnect)
+            {
+                var reconnectButton = panel.Find("FunctionButtons").Find("Left");
+                button.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Reconnect";
+            }
 
             ReversePatches.OpenUI(PopUIManager.Instance, popup);
             GameObject.Find("NotConnectedPopup(Clone)").transform.Find("Panel").Find("FunctionButtons")
-                .Find("Left").gameObject.SetActive(true);
+                .Find("Right").gameObject.SetActive(true);
+            if (reconnect)
+            {
+                var reconnectButton = GameObject.Find("NotConnectedPopup(Clone)")
+                    .transform.Find("Panel").Find("FunctionButtons").Find("Left");
+                reconnectButton.GetComponent<Button>().onClick.RemoveAllListeners();
+                reconnectButton.GetComponent<Button>().onClick
+                    .AddListener(new Action(ArchipelagoPlugin.ArchipelagoClient.Connect));
+                reconnectButton.gameObject.SetActive(true);
+            }
             GameObject.Destroy(popup);
         }
 

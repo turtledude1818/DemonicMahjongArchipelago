@@ -101,34 +101,35 @@ namespace DemonicMahjongArchipelago
 
         public static void checkAllLocations()
         {
-            //Yaku
+            // Yaku
             var allYaku = SaverInstance.PlayPlayFanNewFound.Cast<Il2CppSystem.Collections.Generic.List<FanZhong>>();
             foreach (var yaku in allYaku)
             {
                 checkLocation(yaku, "Yaku");
             }
-            //Achievements
+            // Achievements
             var allAchievements = SaverInstance.CurAchievementGetList.
                 Cast<Il2CppSystem.Collections.Generic.List<AchievementSaveData>>();
             foreach(var achievement in allAchievements)
             {
                 checkLocation(achievement.guid, "Achievement");
             }
-            //Character Full Clear
-            var allCharacterData = SaverInstance.CharacterSaveDataList
-                .Cast<Il2CppSystem.Collections.Generic.List<CharacterSaveData>>();
-            foreach (var character in allCharacterData)
-            {
-                var difficulty = character.highestDifficulty;
-                // Uncleared characters have difficulty as 0
-                if (difficulty > 0 && difficulty > MinDifficulty)
-                {
-                    for (int i = 1; i <= 4; i++)
-                    {
-                        checkLocation(character.CharacterID, "Character", i);
-                    }
-                }
-            }
+            // Character Full Clear
+            // Not sure how to make work with scaling yet, so commented out for now
+            //var allCharacterData = SaverInstance.CharacterSaveDataList
+            //    .Cast<Il2CppSystem.Collections.Generic.List<CharacterSaveData>>();
+            //foreach (var character in allCharacterData)
+            //{
+            //    var difficulty = character.highestDifficulty;
+            //    // Uncleared characters have difficulty as 0
+            //    if (difficulty > 0 && difficulty > MinDifficulty)
+            //    {
+            //        for (int i = 1; i <= 4; i++)
+            //        {
+            //            checkLocation(character.CharacterID, "Character", i);
+            //        }
+            //    }
+            //}
 
         }
 
@@ -167,21 +168,18 @@ namespace DemonicMahjongArchipelago
             {
                 var character = ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1];
                 ReceivedCharacters.Add(ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1]);
-                //ReversePatches.TryAddCharacter(AccountGameDataHandle.Instance, character, true);
                 UnlockItem(character, typeof(CharacterID));
             }
             else if (id < ItemNames.RELIC_OFFSET)
             {
                 var figurine = ItemNames.FigurineIds[id - ItemNames.FIGURINE_OFFSET - 1];
                 ReceivedFigurines.Add(figurine);
-                //ReversePatches.UnlockLingYong(GameManager.Instance.Saver, new[] { figurine });
                 UnlockItem(figurine, typeof(XiaoChou));
             }
             else if (id < ItemNames.FILLER_OFFSET)
             {
                 var relic = ItemNames.RelicIds[id - ItemNames.RELIC_OFFSET - 1];
                 ReceivedRelics.Add(relic);
-                //ReversePatches.UnlockRelic(GameManager.Instance.Saver, new[] { relic });
                 UnlockItem(relic, typeof(RelicId));
             }
             else
@@ -199,7 +197,6 @@ namespace DemonicMahjongArchipelago
                         throw new NotImplementedException($"{name} is not a valid item");
                     }
                     value *= -1;
-                    //BepinLogger.LogWarning("Haven't implemented trap items");
                 }
                 else
                 {
@@ -394,6 +391,7 @@ namespace DemonicMahjongArchipelago
             ArchipelagoClient.ServerData.Index = LastProcessedItem;
             ConnectSetupComplete = true;
             ArchipelagoPlugin.ArchipelagoClient.CheckItems();
+            checkAllLocations();
         }
 
         internal class SaveData
