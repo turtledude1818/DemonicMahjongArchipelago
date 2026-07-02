@@ -7,15 +7,18 @@ using I2.Loc.SimpleJSON;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using MaJiang;
+using MaJiang.Achievement;
 using MaJiang.Achievement.Runtime;
 using MaJiang.DataConstruct;
 using MaJiang.DataConstruct.Achievement;
 using MaJiang.DataConstruct.Character;
 using MaJiang.DataConstruct.MaJiang;
+using MaJiang.DataConstruct.Offering;
 using MaJiang.DataConstruct.Relic;
 using MaJiang.DataConstruct.XiaoChouPai;
 using MaJiang.GameMap;
 using MaJiang.GM;
+using MaJiang.PlayMaJiang.Player.Offering;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,8 +38,6 @@ namespace DemonicMahjongArchipelago
         private static ManualLogSource BepinLogger = ArchipelagoPlugin.BepinLogger;
 
         // Game Data Management
-        public static GlobalStaticDataManager GlobalStaticDataManagerInstance;
-        public static GlobalDataCenter GlobalDataCenterInstance;
         public static GameManager GameManagerInstance;
         public static Saver SaverInstance;
         public static bool InGame = false;
@@ -66,7 +67,7 @@ namespace DemonicMahjongArchipelago
         public static HashSet<FanZhong> CheckedYaku = [];
         public static Dictionary<CharacterID, int> MaxStages = new Dictionary<CharacterID, int>();
         public static HashSet<string> CheckedAchievements = new HashSet<string>();
-        public static int HighestDifficulty = 0;
+        public static int HighestDifficulty = -1;
 
 
         public static bool ConnectSetupComplete = false;
@@ -148,9 +149,9 @@ namespace DemonicMahjongArchipelago
             var queue = fromUnprocessed ? _failedItems : UnprocessedItems;
 
             if (!fromUnprocessed) BepinLogger.LogMessage($"Received {item.ItemName}");
-
             if (!ConnectSetupComplete)
             {
+                BepinLogger.LogInfo($"Not finished connecting, item {item.ItemName} not received");
                 queue.Enqueue(item);
                 return;
             }
@@ -202,16 +203,16 @@ namespace DemonicMahjongArchipelago
                 switch (type)
                 {
                     case "Gold":
-                        GlobalDataCenterInstance.SetData(GlobalDataType.Coins,
-                            GlobalDataCenterInstance.GetData<int>(GlobalDataType.Coins) + value, null);
+                        GlobalDataCenter.Instance.SetData(GlobalDataType.Coins,
+                            GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Coins) + value, null);
                         break;
                     case "Energy":
-                        GlobalDataCenterInstance.SetData(GlobalDataType.Soul,
-                            GlobalDataCenterInstance.GetData<int>(GlobalDataType.Soul) + value, null);
+                        GlobalDataCenter.Instance.SetData(GlobalDataType.Soul,
+                            GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Soul) + value, null);
                         break;
                     case "HP:":
-                        GlobalDataCenterInstance.SetData(GlobalDataType.Hp,
-                            GlobalDataCenterInstance.GetData<int>(GlobalDataType.Hp) + value, null);
+                        GlobalDataCenter.Instance.SetData(GlobalDataType.Hp,
+                            GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Hp) + value, null);
                         break;
                     default:
                         throw new NotImplementedException($"{name} is not a valid item");
@@ -240,73 +241,79 @@ namespace DemonicMahjongArchipelago
             {
                 var lingYongId = (XiaoChou)item;
                 var __instance = SaverInstance;
-                
-                if (!__instance._unlockedLingYongList.Contains(lingYongId))
-                {
-                    __instance._unlockedLingYongList.Add(lingYongId);
-                    var curr = __instance.CurrentUnlockedLingYongList.Cast<Il2CppSystem.Collections.Generic.List<int>>();
-                    curr.Add(((int)lingYongId));
-                    __instance.CurrentUnlockedLingYongList =
-                        curr.Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<int>>();
-                }
+
+                if (__instance._unlockedLingYongList.Contains(lingYongId)) return;
+                __instance._unlockedLingYongList.Add(lingYongId);
+                var curr = __instance.CurrentUnlockedLingYongList.Cast<Il2CppSystem.Collections.Generic.List<int>>();
+                curr.Add(((int)lingYongId));
+                __instance.CurrentUnlockedLingYongList =
+                    curr.Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<int>>();
             }
             else if (type == typeof(RelicId))
             {
                 var relicId = ((RelicId)item).ToString();
                 var __instance = SaverInstance;
 
-                if (!__instance._unlockedRelicList.Contains(relicId))
-                {
-
-                    __instance._unlockedRelicList.Add(relicId);
-                    var curr = __instance.CurrentUnlockedRelicList.Cast<Il2CppSystem.Collections.Generic.List<string>>();
-                    curr.Add(relicId);
-                    __instance.CurrentUnlockedRelicList =
-                        curr.Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<string>>();
-                }
-
-                return;
+                if (__instance._unlockedRelicList.Contains(relicId)) return;
+                __instance._unlockedRelicList.Add(relicId);
+                var curr = __instance.CurrentUnlockedRelicList.Cast<Il2CppSystem.Collections.Generic.List<string>>();
+                curr.Add(relicId);
+                __instance.CurrentUnlockedRelicList =
+                    curr.Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<string>>();
             }
+            else return;
         }
 
         public static void setUpGameData()
         {
-            GlobalDataCenterInstance = GlobalDataCenter.Instance;
-            GlobalStaticDataManagerInstance = GlobalDataCenterInstance.staticDataMgr;
             GameManagerInstance = MaJiang.GM.GameManager.Instance;
             SaverInstance = GameManagerInstance.Saver;
             var index = GameManagerInstance.GameSaverUtil._saverPath.LastIndexOf('/');
             _savePath = GameManagerInstance.GameSaverUtil._saverPath[..index];
 
-//#if DEBUG
-//            var all = "\nYaku: \n";
-//            for (int i = 0; i < GlobalStaticDataManagerInstance.FanZhongPayloadList.Count; i++)
-//            {
-//                var fanZhong = GlobalStaticDataManagerInstance.FanZhongPayloadList[i];
-//                int rarity;
-//                var fan = fanZhong.fan;
-//                if (fan <= 8) rarity = 1;
-//                else if (fan <= 16) rarity = 2;
-//                else if (fan <= 32) rarity = 3;
-//                else if (fan <= 64) rarity = 4;
-//                else if (fan <= 88) rarity = 5;
-//                else rarity = 6;
-//                all += $"\t\"{fanZhong.Name}\": {rarity},\n";
-//            }
-//            all += "Relics: \n" ;
-//            for (int i = 0; i < GlobalStaticDataManagerInstance.RelicDisplayTotalList.Count; i++)
-//            {
-//                var relic = GlobalStaticDataManagerInstance.RelicDisplayTotalList[i];
-//                all += $"\t\"{relic.Name}\": {relic.rarity},\n";
-//            }
-//            all += "Figurines: \n";
-//            for (int i = 0; i < GlobalStaticDataManagerInstance.XiaoChouPaiPayloadTotalList.Count; i++)
-//            {
-//                var figurine = GlobalStaticDataManagerInstance.XiaoChouPaiPayloadTotalList[i];
-//                all += $"\t\"{figurine.Name}\": {figurine.rarity},\n";
-//            }
-//            BepinLogger.LogInfo(all);
-//#endif
+            //#if DEBUG
+            //            var all = "\nYaku: \n";
+            //            for (int i = 0; i < GlobalDataCenter.Instance.staticDataMgr.FanZhongPayloadList.Count; i++)
+            //            {
+            //                var fanZhong = GlobalDataCenter.Instance.staticDataMgr.FanZhongPayloadList[i];
+            //                int rarity;
+            //                var fan = fanZhong.fan;
+            //                if (fan <= 8) rarity = 1;
+            //                else if (fan <= 16) rarity = 2;
+            //                else if (fan <= 32) rarity = 3;
+            //                else if (fan <= 64) rarity = 4;
+            //                else if (fan <= 88) rarity = 5;
+            //                else rarity = 6;
+            //                all += $"\t\"{fanZhong.Name}\": {rarity},\n";
+            //            }
+            //            all += "Relics: \n" ;
+            //            for (int i = 0; i < GlobalDataCenter.Instance.staticDataMgr.RelicDisplayTotalList.Count; i++)
+            //            {
+            //                var relic = GlobalDataCenter.Instance.staticDataMgr.RelicDisplayTotalList[i];
+            //                all += $"\t\"{relic.Name}\": {relic.rarity},\n";
+            //            }
+            //            all += "Figurines: \n";
+            //            for (int i = 0; i < GlobalDataCenter.Instance.staticDataMgr.XiaoChouPaiPayloadTotalList.Count; i++)
+            //            {
+            //                var figurine = GlobalDataCenter.Instance.staticDataMgr.XiaoChouPaiPayloadTotalList[i];
+            //                all += $"\t\"{figurine.Name}\": {figurine.rarity},\n";
+            //            }
+            //            
+            //            BepinLogger.LogInfo(all);
+            //#endif
+            //var all = "\nOffering: \n";
+            ////var offeringList = GlobalDataCenter.Instance.staticDataMgr.OfferingDisplayTotalList;
+            //var offeringList = Enum.GetValues<Offering>();
+            //for (int i = 0; i < offeringList.Length; i++)
+            //{
+            //    var offering = GlobalDataCenter.Instance.GetOffering(offeringList[i]);
+            //    if (offering == null) {
+            //        BepinLogger.LogInfo($"could not get offering {offeringList[i]}");
+            //        continue;
+            //    };
+            //    all += $"\t\t\t{{Offering.{offering.DisplayId}, \"{offering.Name}\"}},\n";
+            //}
+            //BepinLogger.LogInfo(all);
         }
         public static void enterGame()
         {
@@ -345,8 +352,9 @@ namespace DemonicMahjongArchipelago
 
         public static async Task OnConnectSetup(LoginSuccessful success)
         {
+            BepinLogger.LogInfo("Connection setup: loading save");
             await GameData.LoadSaveAsync();
-            if (ConnectSetupComplete) return;
+            //if (ConnectSetupComplete) return;
             if (_saveData == null)
             {
                 // Change game values (TODO: this will wipe character unlock progress, check when to apply)
@@ -359,22 +367,22 @@ namespace DemonicMahjongArchipelago
 
 
                 // Get/Set Options
-                Dictionary<string, object> options = new Dictionary<string, object>();
+                Dictionary<string, object> options = success.SlotData;
 
                 options.TryGetValue("character_min_difficulty", out object minDifficulty);
-                if (minDifficulty != null) MinDifficulty = (int)minDifficulty;
+                if (minDifficulty != null) MinDifficulty = (int)((long)minDifficulty);
 
                 options.TryGetValue("scaling_min_difficulty", out object scaling);
-                if (scaling != null && (bool)scaling)
+                if (scaling != null && (long)scaling != 0)
                 {
                     MaxScalingDifficulty = MinDifficulty;
                     MinDifficulty = 0;
                 }
             }
             BepinLogger.LogMessage("Connection setup completed");
+            ArchipelagoClient.ServerData.Index = LastProcessedItem;
             ConnectSetupComplete = true;
-            for (int i = 0; i <= LastProcessedItem; i++) UnprocessedItems.Dequeue();
-            processUnprocessed();
+            ArchipelagoPlugin.ArchipelagoClient.CheckItems();
         }
 
         internal class SaveData

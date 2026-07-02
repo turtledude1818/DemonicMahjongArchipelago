@@ -161,6 +161,7 @@ public class ArchipelagoClient
     /// <param name="helper">item helper which we can grab our item from</param>
     private void OnItemReceived(ReceivedItemsHelper helper)
     {
+        if (!GameData.ConnectSetupComplete) return;
         var receivedItem = helper.DequeueItem();
 
         if (helper.Index <= ServerData.Index) return;
@@ -173,6 +174,14 @@ public class ArchipelagoClient
         // queue/collection to be handled later
         GameData.receiveItem(receivedItem);
 
+    }
+
+    public void CheckItems()
+    {
+        while (session.Items.Any())
+        {
+            OnItemReceived((ReceivedItemsHelper)session.Items);
+        }
     }
 
     /// <summary>

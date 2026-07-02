@@ -4,6 +4,7 @@ using Il2CppInterop.Runtime.Injection;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppInterop.Runtime.Runtime;
 using MaJiang;
+using MaJiang.GameMap;
 using MaJiang.UI;
 using MaJiang.UI.Bag;
 using MaJiang.UICtrl.BaseClass;
@@ -85,7 +86,7 @@ namespace DemonicMahjongArchipelago
             var connectButton = GameObject.Find("ConnectButton");
             if (connectButton == null)
             {
-                BepinLogger.LogInfo("Couldn't find Connect Button");
+                BepinLogger.LogWarning("Couldn't find Connect Button");
                 return;
             }
             connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
@@ -93,7 +94,7 @@ namespace DemonicMahjongArchipelago
             var disconnectButton = GameObject.Find("DisconnectButton");
             if (disconnectButton == null)
             {
-                BepinLogger.LogInfo("Couldn't find Disconnect Button");
+                BepinLogger.LogWarning("Couldn't find Disconnect Button");
                 return;
             }
             disconnectButton.GetComponent<Button>().onClick.RemoveAllListeners();
@@ -181,6 +182,26 @@ namespace DemonicMahjongArchipelago
             }
 
             return prefab;
+        }
+
+        public static void CreateInfoPanel(string title, string message)
+        {
+            var popup = GameObject.Instantiate(GameMapMgr.Instance.uiConfig.commonPopUp);
+            popup.name = "NotConnectedPopup";
+            var panel = popup.transform.Find("Panel");
+            var titleObject = panel.Find("Title").Find("Text");
+            Component.Destroy(titleObject.GetComponent<Localize>());
+            titleObject.GetComponent<TextMeshProUGUI>().text = title;
+            var textObject = panel.Find("TextContent");
+            Component.Destroy(textObject.GetComponent<Localize>());
+            textObject.GetComponent<TextMeshProUGUI>().text = message;
+            var button = panel.Find("FunctionButtons").Find("Left");
+            button.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Confirm";
+
+            ReversePatches.OpenUI(PopUIManager.Instance, popup);
+            GameObject.Find("NotConnectedPopup(Clone)").transform.Find("Panel").Find("FunctionButtons")
+                .Find("Left").gameObject.SetActive(true);
+            GameObject.Destroy(popup);
         }
 
         private static T CopyComponent<T>(T component, T other) where T : Component

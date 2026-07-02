@@ -12,6 +12,7 @@ using MaJiang.Achievement.Runtime;
 using MaJiang.DataConstruct;
 using MaJiang.DataConstruct.BaoLingPai;
 using MaJiang.DataConstruct.Character;
+using MaJiang.DataConstruct.GameEvent;
 using MaJiang.DataConstruct.MaJiang;
 using MaJiang.DataConstruct.Offering;
 using MaJiang.DataConstruct.Relic;
@@ -23,6 +24,7 @@ using MaJiang.PlayMaJiang.Player.Relic;
 using MaJiang.PlayMaJiang.UI.Bag;
 using MaJiang.PlayMaJiang.UI.Illustration;
 using MaJiang.UI;
+using MaJiang.UI.GameEvent.Shop;
 using MaJiang.Utils;
 using System;
 using System.Collections;
@@ -49,7 +51,7 @@ namespace DemonicMahjongArchipelago
         {
             foreach (RelicId id in relicIds)
             {
-                ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock of relic {id}");
+                ArchipelagoPlugin.BepinLogger.LogMessage($"Blocking unlock of relic {id}");
             }
             return false;
         }
@@ -59,7 +61,7 @@ namespace DemonicMahjongArchipelago
         {
             foreach (XiaoChou id in lingYongIds)
             {
-                ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock of figurine {id}");
+                ArchipelagoPlugin.BepinLogger.LogMessage($"Blocking unlock of figurine {id}");
             }
             return false;
         }
@@ -76,20 +78,23 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         static bool blockDiffCharUnlock(CharacterID characterID, bool useUnlockEffect)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock of character {characterID}");
+            ArchipelagoPlugin.BepinLogger.LogMessage($"Blocking unlock of character {characterID}");
             return false;
         }
         [HarmonyPatch(typeof(AchievementRuntime), "TryUnlockProp")]
         [HarmonyPrefix]
         static bool blockAchievementPropUnlock(AchievementRuntime __instance)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo($"Blocking unlock from achievement {__instance.Name}");
+            ArchipelagoPlugin.BepinLogger.LogMessage($"Blocking unlock from achievement {__instance.Name}");
             return false;
         }
     }
 
     class OverridePatches
     {
+        private static GameRewardPanelCtrl _rewardPanel;
+        private static RewardsType _rewardType;
+
         /// <summary>
         /// Display only unlocked characters on pre-game character select menu
         /// </summary>
@@ -129,7 +134,6 @@ namespace DemonicMahjongArchipelago
                 __instance.unLockList.Add(id);
                 itemDict[id].SetUnlock(true);
             }
-            ArchipelagoPlugin.BepinLogger.LogInfo("Character Level Select altered");
         
         
             // Reimplementation
@@ -167,7 +171,6 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         public static bool AvailableRelicTotalList(
             ref object __result)
-            //ref Il2CppSystem.Collections.Generic.IEnumerable<RelicDisplay> __result)
         {
             var list = new Il2CppSystem.Collections.Generic.List<RelicDisplay>();
             var totallist = MaJiang.GlobalDataCenter.Instance.staticDataMgr._relicDisplayList;
@@ -182,6 +185,46 @@ namespace DemonicMahjongArchipelago
             }
             __result = list;
             return false;
+        }
+
+        [HarmonyPatch(typeof(MaJiang.GlobalDataCenter), "get_AvailableXiaoChouTotalList")]
+        [HarmonyPrefix]
+        public static bool AvailableXiaoChouTotalList(
+            ref object __result)
+        {
+            var list = new Il2CppSystem.Collections.Generic.List<XiaoChouPaiPayload>();
+            var totallist = MaJiang.GlobalDataCenter.Instance.staticDataMgr._xiaoChouPaiPayloads;
+            for (int i = 0; i < totallist.Count; i++)
+            {
+                XiaoChou id = totallist[i].id;
+                //if (GameData.startingRelics.Concat(GameData.receivedRelics).Contains(id))
+                if (GameData.ReceivedFigurines.Contains(id))
+                {
+                    list.Add(totallist[i]);
+                }
+            }
+            __result = list;
+            return false;
+        }
+
+        // These two patches should fix getting locked figurines after battles
+        [HarmonyPatch(typeof(GameRewardPanelCtrl), "OnRewardBtnClick")]
+        [HarmonyPrefix]
+        public static bool GetGameRewardType(GameRewardPanelCtrl __instance, RewardsType rewardsType)
+        {
+            _rewardPanel = __instance;
+            _rewardType = rewardsType;
+            return true;
+        }
+        [HarmonyPatch(typeof(GameMapMgr), "PopNodeUI")]
+        [HarmonyPrefix]
+        public static bool replaceGameRewardEvent(GameEvent gameEvent)
+        {
+            if (_rewardType == RewardsType.LingYong && gameEvent != null)
+            {
+                gameEvent = _rewardPanel.lingyongRewardsEvent;
+            }
+            return true;
         }
     }
     class ReplaceFieldPatches
@@ -333,9 +376,11 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         public static bool GameFinish(GameMapMgr __instance, bool isWin)
         {
+            ArchipelagoPlugin.BepinLogger.LogInfo("Checking Game Finish");
             if (isWin)
             {
-                if (GameData.Difficulty > GameData.MinDifficulty &&
+                ArchipelagoPlugin.BepinLogger.LogInfo("Game Finish is Win");
+                if (GameData.Difficulty >= GameData.MinDifficulty &&
                     GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < 4)
                 {
                     if (GameData.MinDifficulty < GameData.MaxScalingDifficulty) GameData.MinDifficulty++;
@@ -351,17 +396,44 @@ namespace DemonicMahjongArchipelago
             return true;
         }
 
-        [HarmonyPatch(typeof(MapDataManager), "NextLevel")]
+        //[HarmonyPatch(typeof(MapDataManager), "NextLevel")]
+        //[HarmonyPrefix]
+        //public static bool ClearLevel(MapDataManager __instance)
+        //{
+        //    ArchipelagoPlugin.BepinLogger.LogInfo("Going to Next Level");
+        //    var level = __instance.CurLevelNo;
+        //    if (GameData.Difficulty >= GameData.MinDifficulty &&
+        //            GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < level)
+        //    {
+        //        GameData.checkLocation(GameData.Character, "Character", level);
+        //        GameData.MaxStages[GameData.Character] = level;
+        //    }
+        //    return true;
+        //}
+        [HarmonyPatch(typeof(GameMapMgr), "CheckToFinalChapter")]
         [HarmonyPrefix]
-        public static bool ClearLevel(MapDataManager __instance)
+        public static bool CheckLevelWin(GameMapMgr __instance)
         {
-            var level = __instance.CurLevelNo;
-            if (GameData.Difficulty > GameData.MinDifficulty &&
+            ArchipelagoPlugin.BepinLogger.LogInfo("Checking Level Win");
+            var level = __instance.mapDataMgr.CurLevelNo;
+            var section = __instance.mapDataMgr.CurSectionNo;
+            if (section != 3) return true;
+            
+            if (GameData.Difficulty >= GameData.MinDifficulty &&
                     GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < level)
             {
                 GameData.checkLocation(GameData.Character, "Character", level);
                 GameData.MaxStages[GameData.Character] = level;
             }
+            return true;
+        }
+
+        [HarmonyPatch(typeof(OrderButton), "Buy")]
+        [HarmonyPrefix]
+        public static bool CheckMilkTea(OrderButton __instance)
+        {
+            // Not implemented
+            //GameData.checkLocation(__instance.OnlyId, "Milk Tea");
             return true;
         }
     }
@@ -397,9 +469,22 @@ namespace DemonicMahjongArchipelago
         }
         [HarmonyPatch(typeof(GameMapMgr), "DoBattleOverFlow")]
         [HarmonyPrefix]
-        public static bool BattleOver()
+        public static bool BattleOver(GameMapMgr __instance)
         {
             GameData.InBattle = false;
+
+            var level = __instance.mapDataMgr.CurLevelNo;
+            var section = __instance.mapDataMgr.CurSectionNo;
+            if (section == 3)
+            {
+                ArchipelagoPlugin.BepinLogger.LogInfo($"Cleared Level {level} as {GameData.Character}");
+                if (GameData.Difficulty >= GameData.MinDifficulty &&
+                        GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < level)
+                {
+                    GameData.checkLocation(GameData.Character, "Character", level);
+                    GameData.MaxStages[GameData.Character] = level;
+                }
+            }
             return true;
         }
         [HarmonyPatch(typeof(GameMapMgr), "EnterFight")]
@@ -427,12 +512,38 @@ namespace DemonicMahjongArchipelago
     }
     class UIPatches
     {
-        [HarmonyPatch(typeof(MaJiang.OptionMenuPanelCtrl), "OnEnable")]
+        [HarmonyPatch(typeof(OptionMenuPanelCtrl), "OnEnable")]
         [HarmonyPrefix]
-        public static bool addArchipelagoSettingButton(MaJiang.OptionMenuPanelCtrl __instance)
+        public static bool AddArchipelagoSettingButton(OptionMenuPanelCtrl __instance)
         {
             ArchipelagoUI.AddArchipelagoSettingButton(__instance);
 
+            return true;
+        }
+        [HarmonyPatch(typeof(HomePanelCtrl), "OnNewGameBtnClick")]
+        [HarmonyPrefix]
+        public static bool BlockNewGame()
+        {
+            if (!ArchipelagoClient.Authenticated)
+            {
+                ArchipelagoUI.CreateInfoPanel("Archipelago Not Connected",
+                    "Connect to Archipelago server before starting a new game, " +
+                    "or remove the mod to play without Archipelago.");
+                return false;
+            }
+            return true;
+        }
+        [HarmonyPatch(typeof(HomePanelCtrl), "OnContinueBtnClick")]
+        [HarmonyPrefix]
+        public static bool BlockContinue()
+        {
+            if (!ArchipelagoClient.Authenticated)
+            {
+                ArchipelagoUI.CreateInfoPanel("Archipelago Not Connected",
+                    "Connect to Archipelago server before continuing a game, " +
+                    "or remove the mod to play without Archipelago.");
+                return false;
+            }
             return true;
         }
     }
@@ -498,204 +609,26 @@ class DebugPatches
             else if (!gotNames && gotDict == 10000) gotDict--;
             gotDict++;
         }*/
-        [HarmonyPatch(typeof(GlobalStaticDataManager), "get_AllRelicInGame")]
-        [HarmonyPostfix]
-        public static void getFigurineRelicNames(GlobalStaticDataManager __instance)
-        // Expand to include names of more things
-        {
-            if (!gotNames)
-            {
-                gotNames = true;
-                var figurineList = __instance.XiaoChouPaiPayloadTotalList;
-                for (int i = 0; i < figurineList.Count; i++)
-                {
-                    string key = $"XiaoChou.{Enum.GetName(typeof(XiaoChou), figurineList[i].ID)}";
-                    if (!fullDict.ContainsKey(key))
-                    {
-                        string[] names = { figurineList[i].displayName };
-                        fullDict.Add(key, names);
-                    }
-                }
-                var relicList = __instance.RelicDisplayTotalList;
-                for (int i = 0; i < relicList.Count; i++)
-                {
-                    string key = $"RelicId.{Enum.GetName(typeof(RelicId), relicList[i].ID)}";
-                    if (!fullDict.ContainsKey(key))
-                    {
-                        string[] names = { relicList[i].displayName };
-                        fullDict.Add(key, names);
-                    }
-                }
-                var yakuList = __instance.FanZhongPayloadList;
-                for (int i = 0; i < yakuList.Count; i++)
-                {
-                    string key = $"FanZhong.{Enum.GetName(typeof(FanZhong), yakuList[i].ID)}";
-                    if (!fullDict.ContainsKey(key))
-                    {
-                        string[] names = { yakuList[i].displayName };
-                        fullDict.Add(key, names);
-                    }
-                }
-                var offeringList = __instance.OfferingTotalList;
-                for (int i = 0; i < offeringList.Count; i++)
-                {
-                    string key = $"Offering.{Enum.GetName(typeof(Offering), offeringList[i].ID)}";
-                    if (!fullDict.ContainsKey(key))
-                    {
-                        string[] names = { offeringList[i].displayName };
-                        fullDict.Add(key, names);
-                    }
-                }
-
-                System.IO.File.WriteAllText("term names.json", System.Text.Json.JsonSerializer.Serialize(fullDict));
-                ArchipelagoPlugin.BepinLogger.LogInfo("dict written to file");
-            }
-        }
-        [HarmonyPatch(typeof(AchievementManager), "AllUnlockedAchievementCheck")]
-        [HarmonyPostfix]
-        public static void getAchievmentNames(AchievementManager __instance)
-        {
-            if (!gotAchievements)
-            {
-                gotAchievements = true;
-                var achievementList = __instance.RuntimeAchievements;
-                Dictionary<string, string> achievementDict = new Dictionary<string, string>();
-                for (int i = 0; i < achievementList.Count; i++)
-                {
-                    string key = achievementList[i].OnlyId;
-                    if (!achievementDict.ContainsKey(key))
-                    {
-                        achievementDict.Add(key, achievementList[i].Payload.displayNameTerm.ToString());
-                    }
-                }
-                System.IO.File.WriteAllText("achievements.json", System.Text.Json.JsonSerializer.Serialize(achievementDict));
-                ArchipelagoPlugin.BepinLogger.LogInfo("achievements written to file");
-            }
-        }
-        [HarmonyPatch(typeof(RelicPanelCtr), "OnEnable")]
-        [HarmonyPostfix]
-        public static void RelicPanelOnEnable(RelicPanelCtr __instance)
-        {
-            var logger = ArchipelagoPlugin.BepinLogger;
-            var list = __instance._unlockedRelicList;
-            logger.LogInfo("Unlocked Relic List:");
-            for (int i = 0; i < 1000; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {list[i]}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            logger.LogInfo("Available Relic List:");
-            list = __instance._availableRelicList;
-            for (int i = 0; i < 1000; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {list[i]}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            logger.LogInfo("NeedUnlocked Relic List:");
-            var list2 = __instance._relicNeedUnLockedList;
-            for (int i = 0; i < 1000; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {list2[i]}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            logger.LogInfo("Mysterious Relic List:");
-            var list3 = __instance._relicMysteriousList;
-            for (int i = 0; i < 1000; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {list3[i]}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            logger.LogInfo("Saver Unlocked Relic List:");
-            var saver = __instance._saver;
-            list = saver.UnlockedRelicList;
-            for (int i = 0; i < 1000; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {list[i]}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            var staticDataManager = MaJiang.GlobalDataCenter.Instance.staticDataMgr;
-            logger.LogInfo("Static Data Manager Relic Display List:");
-            var listStatic2 = staticDataManager._relicDisplayList;
-            for (int i = 0; ; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {listStatic2[i].displayId}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            logger.LogInfo("Static Data Manager NeedUnlocked Relic List:");
-            var listStatic3 = staticDataManager.RelicNeedUnLockedList;
-            for (int i = 0; ; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {((RelicId)listStatic3[i]).ToString()}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            logger.LogInfo("Static Data Manager Mysterious Relic List:");
-            var listStatic4 = staticDataManager.RelicDisplayMysteriousTotalList;
-            for (int i = 0; ; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {listStatic4[i].displayId}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            logger.LogInfo("GlobalDataCenter Available Relic Total List:");
-            var listGlobal4 = new Il2CppSystem.Collections.Generic.List<RelicDisplay>(GlobalDataCenter.Instance.AvailableRelicTotalList);
-            for (int i = 0; ; i++)
-            {
-                try
-                {
-                    logger.LogInfo($"{i}: {listGlobal4[i].displayId}");
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-        }
+        //[HarmonyPatch(typeof(AchievementManager), "AllUnlockedAchievementCheck")]
+        //[HarmonyPostfix]
+        //public static void getAchievmentNames(AchievementManager __instance)
+        //{
+        //    if (!gotAchievements)
+        //    {
+        //        gotAchievements = true;
+        //        var achievementList = __instance.RuntimeAchievements;
+        //        Dictionary<string, string> achievementDict = new Dictionary<string, string>();
+        //        for (int i = 0; i < achievementList.Count; i++)
+        //        {
+        //            string key = achievementList[i].OnlyId;
+        //            if (!achievementDict.ContainsKey(key))
+        //            {
+        //                achievementDict.Add(key, achievementList[i].Payload.displayNameTerm.ToString());
+        //            }
+        //        }
+        //        System.IO.File.WriteAllText("achievements.json", System.Text.Json.JsonSerializer.Serialize(achievementDict));
+        //        ArchipelagoPlugin.BepinLogger.LogInfo("achievements written to file");
+        //    }
+        //}
     }
 }

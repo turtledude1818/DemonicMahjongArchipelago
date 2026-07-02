@@ -1,6 +1,7 @@
 ﻿using MaJiang;
 using MaJiang.DataConstruct.Character;
 using MaJiang.DataConstruct.MaJiang;
+using MaJiang.DataConstruct.Offering;
 using MaJiang.DataConstruct.Relic;
 using MaJiang.DataConstruct.XiaoChouPai;
 using System;
@@ -126,7 +127,7 @@ namespace DemonicMahjongArchipelago
 			{XiaoChou.DieDieXiaoYao, "Stacked Puck"},
 			{XiaoChou.HuanLi, "Fantasy"},
 			{XiaoChou.HuaXinWaWa, "Suitor Doll"},
-			{XiaoChou.DanZhongDan, "Nesting Egg"},
+			{XiaoChou.DanZhongDan, "Nesting Egg 1"},
 			{XiaoChou.HuXianXueTu, "Vixen Pupil"},
 			{XiaoChou.JiEXiaoYao, "Starved Puck"},
 			{XiaoChou.JinBaoMao, "Treasure Cat"},
@@ -412,5 +413,50 @@ namespace DemonicMahjongArchipelago
 		};
 
         public static List<RelicId> RelicIds = RelicNames.Keys.ToList();
+
+		public static Dictionary<Offering, string> OfferingNames = new Dictionary<Offering, string> {
+                        {Offering.ShuMei, "Raspberry"},
+                        {Offering.XiGua, "Watermelon"},
+                        {Offering.GanZhe, "Sugarcane"},
+                        {Offering.HuoLongGuo, "Pitaya"},
+                        {Offering.XiangJiao, "Banana"},
+                        {Offering.PuTao, "Grape"},
+                        {Offering.RenShenGuo, "Ginseng Fruit"},
+                        {Offering.ManTuoLuo, "Mandragora"},
+                        {Offering.WuGenShui, "Astral Water"},
+                        {Offering.FuLing, "Poria Cocos"},
+                        {Offering.HuangQi, "Huang Qi"},
+                        {Offering.HuanHunCao, "Soulfern"},
+                        {Offering.ShenXianCao, "Comfrey"},
+                        {Offering.DangGui, "Dong Quai"},
+                        {Offering.GouQi, "Goji Berry"},
+                        {Offering.RenShen, "Ginseng"},
+                        {Offering.TangRen, "Dumbo Candy"},
+                        {Offering.MianRen, "Mouse Candy"},
+                        {Offering.WanZiGao, "Manji Cake"},
+                        {Offering.TongLuoShao, "Dorayaki"},
+                        {Offering.ZhuYeGao, "Bamboo Cake"},
+                        {Offering.SiXiFengGao, "Blessing Cake"},
+                        {Offering.LongXuSu, "Dragon Pastry"},
+                        {Offering.BaBaoFan, "Treasure Rice"},
+                        {Offering.TangHua, "Sugar Painting"},
+                        {Offering.SongLan, "Woad"},
+                        {Offering.SanSeHua, "Chroma Petal"},
+//                        {Offering.HaoMao, "Monkefur"},
+//                        {Offering.BubbleTeaGuiHuoLinGuangNaiLv, "Green Ignis"},
+//                        {Offering.BubbleTeaSuiJinZhiHuiNaiGai, "Ash Foam"},
+//                        {Offering.BubbleTeaYouHunGuiHuaJiuNiang, "Osmanwisp"},
+//                        {Offering.BubbleTeaXiangCaiNaoHuaNaiCha, "Cilantro Nog"},
+//                        {Offering.BubbleTeaShengSiBuYangZhiGanLu, "RIP Sago"},
+//                        {Offering.BubbleTeaGuHuiJiZhenZhuNaiCha, "Cremains Tea"},
+//                        {Offering.BubbleTeaShiXiangTengJiaoBingSha, "Fowl Shitake"},
+//                        {Offering.BubbleTeaGuiDaQiangChenJiuNiang, "Ghoul Wine"},
+//                        {Offering.BubbleTeaWanChuanMoYuNaiMo, "Idling Jasmine"},
+//                        {Offering.BubbleTeaPaoXiaoYaoTongTongCha, "Puck Tea"},
+//                        {Offering.BubbleTeaDouFuRuNaiCha, "Red Tofu Tea"},
+//                        {Offering.BubbleTeaJingXiSuoMingMingCha, "Thrilling Tea"},
+		};
+
+        public static List<Offering> OfferingIds = OfferingNames.Keys.ToList();
     }
 }
