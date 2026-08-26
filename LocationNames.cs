@@ -165,7 +165,7 @@ namespace DemonicMahjongArchipelago
 			{"100400", "Scavenger I"},
 			{"100401", "Scavenger II"},
 			{"100402", "Scavenger III"},
-			{"100403", "Scavenger IV"}, // Not Real?
+//			{"100403", "Scavenger IV"}, // Not Real?
 			{"100800", "Full Devotion"},
 			{"100801", "Dual Glory"},
 			{"101200", "Zen·Chowbo"},

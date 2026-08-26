@@ -132,6 +132,9 @@ public class ArchipelagoClient
 
             Authenticated = false;
             Disconnect();
+
+            ArchipelagoUI.CreateInfoPanel("Connection Failure",
+                $"Unable to connect to {ServerData.Uri} as {ServerData.SlotName}");
         }
 
         //ArchipelagoConsole.LogMessage(outText);

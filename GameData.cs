@@ -101,6 +101,7 @@ namespace DemonicMahjongArchipelago
 
         public static void checkAllLocations()
         {
+            SaverInstance = GameManager.Instance.Saver;
             // Yaku
             var allYaku = SaverInstance.PlayPlayFanNewFound.Cast<Il2CppSystem.Collections.Generic.List<FanZhong>>();
             foreach (var yaku in allYaku)
@@ -148,6 +149,7 @@ namespace DemonicMahjongArchipelago
             if (item == null) throw new ArgumentNullException("item");
             int id = (int)item.ItemId;
             var queue = fromUnprocessed ? _failedItems : UnprocessedItems;
+            Il2CppSystem.Object unlockItem;
 
             if (!fromUnprocessed) BepinLogger.LogMessage($"Received {item.ItemName}");
             if (!ConnectSetupComplete)
@@ -167,20 +169,26 @@ namespace DemonicMahjongArchipelago
             if (id < ItemNames.FIGURINE_OFFSET)
             {
                 var character = ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1];
-                ReceivedCharacters.Add(ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1]);
+                if (ReceivedCharacters.Contains(character)) return;
+                ReceivedCharacters.Add(character);
                 UnlockItem(character, typeof(CharacterID));
+                unlockItem = GlobalDataCenter.Instance.GetCharacterPayload(character);
             }
             else if (id < ItemNames.RELIC_OFFSET)
             {
                 var figurine = ItemNames.FigurineIds[id - ItemNames.FIGURINE_OFFSET - 1];
+                if (ReceivedFigurines.Contains(figurine)) return;
                 ReceivedFigurines.Add(figurine);
                 UnlockItem(figurine, typeof(XiaoChou));
+                unlockItem = GlobalDataCenter.Instance.GetXiaoChouPaiPayload(figurine);
             }
             else if (id < ItemNames.FILLER_OFFSET)
             {
                 var relic = ItemNames.RelicIds[id - ItemNames.RELIC_OFFSET - 1];
+                if (ReceivedRelics.Contains(relic)) return;
                 ReceivedRelics.Add(relic);
                 UnlockItem(relic, typeof(RelicId));
+                unlockItem = GlobalDataCenter.Instance.TryGetRelicDisplay(relic);
             }
             else
             {
@@ -225,7 +233,10 @@ namespace DemonicMahjongArchipelago
                     default:
                         throw new NotImplementedException($"{name} is not a valid item");
                 }
+                // Don't pop item
+                return;
             }
+            if (unlockItem != null) ArchipelagoUI.ItemPopPanel(unlockItem.Cast<IItemInfo>());
         }
         // Have to reimplement rather than call game functions because of AccessViolationExceptions
         public static void UnlockItem(object item, Type type)
@@ -236,7 +247,7 @@ namespace DemonicMahjongArchipelago
                 var __instance = AccountGameDataHandle.Instance;
 
                 var saver = GameManager.Instance.Saver;
-                if (saver._freeModeUnLockCharacterList.Contains(characterId)) return;
+                //try { if (saver._freeModeUnLockCharacterList.Contains(characterId)) return; } catch { }
                 saver._freeModeUnLockCharacterList.Add(characterId);
 
                 // Reimplement AddCharacterSaverData(characterId, writeSave)
@@ -250,7 +261,7 @@ namespace DemonicMahjongArchipelago
                 var lingYongId = (XiaoChou)item;
                 var __instance = SaverInstance;
 
-                if (__instance._unlockedLingYongList.Contains(lingYongId)) return;
+                //try { if (__instance._unlockedLingYongList.Contains(lingYongId)) return; } catch { }
                 __instance._unlockedLingYongList.Add(lingYongId);
                 var curr = __instance.CurrentUnlockedLingYongList.Cast<Il2CppSystem.Collections.Generic.List<int>>();
                 curr.Add(((int)lingYongId));
@@ -262,7 +273,7 @@ namespace DemonicMahjongArchipelago
                 var relicId = ((RelicId)item).ToString();
                 var __instance = SaverInstance;
 
-                if (__instance._unlockedRelicList.Contains(relicId)) return;
+                //try { if (__instance._unlockedRelicList.Contains(relicId)) return; } catch { }
                 __instance._unlockedRelicList.Add(relicId);
                 var curr = __instance.CurrentUnlockedRelicList.Cast<Il2CppSystem.Collections.Generic.List<string>>();
                 curr.Add(relicId);
@@ -278,6 +289,15 @@ namespace DemonicMahjongArchipelago
             SaverInstance = GameManagerInstance.Saver;
             var index = GameManagerInstance.GameSaverUtil._saverPath.LastIndexOf('/');
             _savePath = GameManagerInstance.GameSaverUtil._saverPath[..index];
+
+            // Set all FanZhong rewards to null
+            var yakuList = GlobalDataCenter.Instance.staticDataMgr._fanZhongPayloadList;
+            for (int i = 0; i < yakuList.Count; i++)
+            {
+                var payload = yakuList[i];
+                payload.relic = null;
+                payload.xiaoChouPai = null;
+            }
 
             //#if DEBUG
             //            var all = "\nYaku: \n";
@@ -332,25 +352,16 @@ namespace DemonicMahjongArchipelago
             processUnprocessed();
         }
 
-        public static CharacterID[] UnlockedChars()
-        {
-            return ReceivedCharacters.ToArray();
-        }
-        public static RelicId[] UnlockedRelics()
-        {
-            return ReceivedRelics.ToArray();
-        }
-        public static XiaoChou[] UnlockedFigurines()
-        {
-            return ReceivedFigurines.ToArray();
-        }
-
         public static void ClearAllData()
         {
             SaverInstance.ClearUnlockLongYongList();
             SaverInstance.ClearCurrentUnlockLongYongList();
             SaverInstance.ClearUnlockRelicList();
             SaverInstance.ClearCurrentUnlockRelicList();
+            SaverInstance.ClearFreeModeUnLockCharacterList();
+
+            SaverInstance.ClearAchievementData();
+            SaverInstance.PlayFanNewFoundClear();
         }
 
         internal static void Init(ArchipelagoClient client)
@@ -360,6 +371,7 @@ namespace DemonicMahjongArchipelago
 
         public static async Task OnConnectSetup(LoginSuccessful success)
         {
+            SaverInstance = GameManager.Instance.Saver;
             BepinLogger.LogInfo("Connection setup: loading save");
             await GameData.LoadSaveAsync();
             //if (ConnectSetupComplete) return;

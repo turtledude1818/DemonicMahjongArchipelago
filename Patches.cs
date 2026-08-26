@@ -122,14 +122,14 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         static bool RefreshCharacterItem(CharacterLevelChooseCtrl __instance)
         {
-            var unlocked = GameData.UnlockedChars();
+            var unlocked = GameData.ReceivedCharacters;
             var showIndex = __instance.characterShowIndex;
             var itemDict = __instance.characterItemDict;
             var saveData = AccountGameDataHandle.Instance.GetPlayerCharcterSaveDatas();
         
             // Selecting unlocked chars
             __instance.unLockList.Clear();
-            foreach (CharacterID id in GameData.UnlockedChars())
+            foreach (CharacterID id in unlocked)
             {
                 __instance.unLockList.Add(id);
                 itemDict[id].SetUnlock(true);
@@ -143,7 +143,7 @@ namespace DemonicMahjongArchipelago
                 if (unlocked.Contains(id)) itemDict[id].SetSaveData(data);
             }
         
-            __instance.countUnlockCharacter.text = unlocked.Length.ToString();
+            __instance.countUnlockCharacter.text = unlocked.Count.ToString();
             for (int i = 0; i < showIndex._size; i++)
             {
                 for (int index = 0; index < showIndex._size - i - 1; index++)
@@ -363,6 +363,18 @@ namespace DemonicMahjongArchipelago
             GameData.checkLocation(fanZhong, "Yaku");
             GameData.CheckedYaku.Add(fanZhong);
         }
+        // Change to override to fix unlocking items after DLC update
+        //[HarmonyPatch(typeof(Saver), "PlayFanNewFoundAdd")]
+        //[HarmonyPrefix]
+        //public static bool NewYaku(FanZhong fanZhong, Saver __instance)
+        //{
+        //    GameData.checkLocation(fanZhong, "Yaku");
+        //    GameData.CheckedYaku.Add(fanZhong);
+        //
+        //    __instance._playFanNewFound.Add(fanZhong);
+        //
+        //    return false;
+        //}
 
         [HarmonyPatch(typeof(AchievementRuntime), "Get")]
         [HarmonyPostfix]

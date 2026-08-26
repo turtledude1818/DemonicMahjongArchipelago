@@ -4,6 +4,9 @@ using Il2CppInterop.Runtime.Injection;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppInterop.Runtime.Runtime;
 using MaJiang;
+using MaJiang.Achievement;
+using MaJiang.Achievement.Runtime;
+using MaJiang.DataConstruct;
 using MaJiang.GameMap;
 using MaJiang.UI;
 using MaJiang.UI.Bag;
@@ -44,6 +47,7 @@ namespace DemonicMahjongArchipelago
         private static OptionMenuPanelCtrl optionMenu;
         private static readonly BepInEx.Logging.ManualLogSource BepinLogger = ArchipelagoPlugin.BepinLogger;
         private static TextMeshProUGUI[] inputs = new TextMeshProUGUI[3];
+        private static AchievementRuntime achievementTemplate;
         public static void AddArchipelagoSettingButton(OptionMenuPanelCtrl __instance)
         {
             if (prefab == null)
@@ -216,6 +220,33 @@ namespace DemonicMahjongArchipelago
                 reconnectButton.gameObject.SetActive(true);
             }
             GameObject.Destroy(popup);
+        }
+
+        private static void makeAchievementTemplate()
+        {
+            AchievementRuntime template;
+            AchievementManager.Instance.TryGetAchievementByOnlyID("200069", out template);
+            if (template == null)
+            {
+                throw new IndexOutOfRangeException("Could not create achievement pop template" +
+                    " from onlyID 200069");
+            }
+
+            achievementTemplate = template;
+        }
+
+        public static void ItemPopPanel(IItemInfo item)
+        {
+            try
+            {
+                if (achievementTemplate == null) makeAchievementTemplate();
+                achievementTemplate.UnlockItem = item;
+                AchievementManager.Instance.PopEnqueue(achievementTemplate);
+            }
+            catch (IndexOutOfRangeException e)
+            {
+                BepinLogger.LogError(e);
+            }
         }
 
         private static T CopyComponent<T>(T component, T other) where T : Component
