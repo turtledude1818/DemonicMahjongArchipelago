@@ -6,6 +6,7 @@ using I2.Loc;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.Injection;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppSystem.Linq;
 using MaJiang;
 using MaJiang.Achievement;
 using MaJiang.Achievement.Runtime;
@@ -17,6 +18,9 @@ using MaJiang.DataConstruct.MaJiang;
 using MaJiang.DataConstruct.Offering;
 using MaJiang.DataConstruct.Relic;
 using MaJiang.DataConstruct.XiaoChouPai;
+using MaJiang.DLC;
+using MaJiang.GameEvent.Runtime.Controller;
+using MaJiang.GameEvent.Shop;
 using MaJiang.GameMap;
 using MaJiang.GM;
 using MaJiang.Log;
@@ -86,6 +90,13 @@ namespace DemonicMahjongArchipelago
         static bool blockAchievementPropUnlock(AchievementRuntime __instance)
         {
             ArchipelagoPlugin.BepinLogger.LogMessage($"Blocking unlock from achievement {__instance.Name}");
+            return false;
+        }
+        // Fix shop giving locked items
+        [HarmonyPatch(typeof(ShopExtend), "TryGetBackupList")]
+        [HarmonyPrefix]
+        static bool blockBackupList() //sic
+        {
             return false;
         }
     }
@@ -226,6 +237,39 @@ namespace DemonicMahjongArchipelago
             }
             return true;
         }
+        // Fix shop giving locked relics
+        [HarmonyPatch(typeof(ShopExtend), "GetTotalList")]
+        [HarmonyPostfix]
+        public static void changeTotalListToUnlockedOnly(NodeShop _shop, ItemType _typeEnum, IItemList __result)
+        {
+            if (_typeEnum != ItemType.Relic) { return; }
+            var list = new Il2CppSystem.Collections.Generic.List<RelicDisplay>();
+            var array = __result.Cast<ArrayItemList<RelicDisplay>>();
+            for (int i = 0; i < __result.ItemList.Count(); i++)
+            {
+                var relic = (RelicDisplay)array._array[i];
+                if (GameData.IsItemUnlocked((RelicId)relic.ID))
+                {
+                    list.Add(relic);
+                }
+            }
+            array._array = list.ToArray();
+        }
+
+        //[HarmonyPatch(typeof(NodeShop), "GetRandom")]
+        //[HarmonyPrefix]
+        //public static bool ShopGetRandom(ref Il2CppSystem.Collections.Generic.IReadOnlyList<IItemInfo> _exclusive)
+        //{
+        //    var list = _exclusive.Cast<Il2CppSystem.Collections.Generic.List<IItemInfo>>();
+        //    var allRelics = GlobalDataCenter.Instance.AllRelicInGame.ToList();
+        //    foreach (var relic in allRelics)
+        //    {
+        //        if (!GameData.IsItemUnlocked((RelicId)relic.ID)) {
+        //            list.Add(relic.Cast<IItemInfo>());
+        //        }
+        //    }
+        //    return true;
+        //}
     }
     class ReplaceFieldPatches
     {
@@ -350,6 +394,12 @@ namespace DemonicMahjongArchipelago
         [HarmonyReversePatch]
         [HarmonyPatch(typeof(PopUIManager), "OpenUI", typeof(GameObject), typeof(Il2CppReferenceArray<Il2CppSystem.Object>))]
         public static IManagedUI OpenUI(PopUIManager __instance, GameObject prefab, Il2CppReferenceArray<Il2CppSystem.Object> openParams = null)
+        {
+            throw new NotImplementedException();
+        }
+        [HarmonyReversePatch]
+        [HarmonyPatch(typeof(ShopExtend), "GetTotalList")]
+        public static IItemList GetTotalList(NodeShop _shop, ItemType _typeEnum)
         {
             throw new NotImplementedException();
         }

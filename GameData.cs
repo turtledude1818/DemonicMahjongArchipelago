@@ -283,6 +283,17 @@ namespace DemonicMahjongArchipelago
             else return;
         }
 
+        public static bool IsItemUnlocked(object item)
+        {
+            return item switch
+            {
+                RelicId relic           => ReceivedRelics.Contains(relic),
+                XiaoChou figurine       => ReceivedFigurines.Contains(figurine),
+                CharacterID character   => ReceivedCharacters.Contains(character),
+                _                       => false
+            };
+        }
+
         public static void setUpGameData()
         {
             GameManagerInstance = MaJiang.GM.GameManager.Instance;
@@ -290,7 +301,7 @@ namespace DemonicMahjongArchipelago
             var index = GameManagerInstance.GameSaverUtil._saverPath.LastIndexOf('/');
             _savePath = GameManagerInstance.GameSaverUtil._saverPath[..index];
 
-            // Set all FanZhong rewards to null
+            // Clear rewards for all FanZhong
             var yakuList = GlobalDataCenter.Instance.staticDataMgr._fanZhongPayloadList;
             for (int i = 0; i < yakuList.Count; i++)
             {
