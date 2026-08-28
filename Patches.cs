@@ -438,16 +438,15 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         public static bool GameFinish(GameMapMgr __instance, bool isWin)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo("Checking Game Finish");
             if (isWin)
             {
-                ArchipelagoPlugin.BepinLogger.LogInfo("Game Finish is Win");
                 if (GameData.Difficulty >= GameData.MinDifficulty &&
                     GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < 4)
                 {
                     if (GameData.MinDifficulty < GameData.MaxScalingDifficulty) GameData.MinDifficulty++;
                     GameData.checkLocation(GameData.Character, "Character", 4);
                     GameData.MaxStages[GameData.Character] = 4;
+                    ArchipelagoPlugin.BepinLogger.LogInfo($"Cleared Game as {GameData.Character}");
                 }
                 if (GameData.Difficulty > GameData.HighestDifficulty)
                 {
@@ -476,7 +475,6 @@ namespace DemonicMahjongArchipelago
         [HarmonyPrefix]
         public static bool CheckLevelWin(GameMapMgr __instance)
         {
-            ArchipelagoPlugin.BepinLogger.LogInfo("Checking Level Win");
             var level = __instance.mapDataMgr.CurLevelNo;
             var section = __instance.mapDataMgr.CurSectionNo;
             if (section != 3) return true;

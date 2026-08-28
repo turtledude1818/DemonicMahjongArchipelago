@@ -69,6 +69,12 @@ namespace DemonicMahjongArchipelago
         public static HashSet<string> CheckedAchievements = new HashSet<string>();
         public static int HighestDifficulty = -1;
 
+        public static long victoryCondition = -1;
+        public static long characterVictory = -1;
+        public static long difficultyVictory = -1;
+        public static long achievementVictory = -1;
+        public static long yakuVictory = -1;
+        public static bool goalComplete = false;
 
         public static bool ConnectSetupComplete = false;
         private static bool _saving = false;
@@ -82,6 +88,7 @@ namespace DemonicMahjongArchipelago
                     id = LocationNames.YakuToId[(FanZhong)location] + LocationNames.YAKU_OFFSET + 1;
                     break;
                 case "Achievement":
+                    // causing off by one later down in list
                     id = LocationNames.AchievementToId[(string)location] + LocationNames.ACHIEVEMENT_OFFSET + 1;
                     break;
                 case "Difficulty":
@@ -97,6 +104,7 @@ namespace DemonicMahjongArchipelago
             }
             if (id == 0) throw new NotImplementedException($"{type} is not a valid location type");
             Client.checkLocation(id);
+            CheckGoalCompletion();
         }
 
         public static void checkAllLocations()
@@ -236,7 +244,7 @@ namespace DemonicMahjongArchipelago
                 // Don't pop item
                 return;
             }
-            if (unlockItem != null) ArchipelagoUI.ItemPopPanel(unlockItem.Cast<IItemInfo>());
+            //if (unlockItem != null) ArchipelagoUI.ItemPopPanel(unlockItem.Cast<IItemInfo>());
         }
         // Have to reimplement rather than call game functions because of AccessViolationExceptions
         public static void UnlockItem(object item, Type type)
@@ -292,6 +300,63 @@ namespace DemonicMahjongArchipelago
                 CharacterID character   => ReceivedCharacters.Contains(character),
                 _                       => false
             };
+        }
+
+        public static void CheckGoalCompletion()
+        {
+            if (goalComplete) return;
+
+            bool charClear = true;
+            bool difficultyClear = true;
+            bool achievementClear = true;
+            bool yakuClear = true;
+            if (victoryCondition == 1 || (victoryCondition == 0 && characterVictory > 0))
+            {
+                if (characterVictory < 0)
+                {
+                    BepinLogger.LogError("Error when checking for character victory, " +
+                        "number of characters not found");
+                    return;
+                }
+                charClear = MaxStages.Where(kvp => 
+                    kvp.Value == 4
+                    ).ToList().Count >= characterVictory;
+            }
+            if (victoryCondition == 2 || (victoryCondition == 0 && difficultyVictory > 0))
+            {
+                if (difficultyVictory < 0)
+                {
+                    BepinLogger.LogError("Error when checking for difficulty victory, " +
+                        "difficulty option not found");
+                    return;
+                }
+                difficultyClear = HighestDifficulty >= difficultyVictory;
+            }
+            if (victoryCondition == 3 || (victoryCondition == 0 && achievementVictory > 0))
+            {
+                if (achievementVictory < 0)
+                {
+                    BepinLogger.LogError("Error when checking for achievement victory, " +
+                        "number of achievements not found");
+                    return;
+                }
+                charClear = CheckedAchievements.Count >= achievementVictory;
+            }
+            if (victoryCondition == 4 || (victoryCondition == 0 && yakuVictory > 0))
+            {
+                if (yakuVictory < 0)
+                {
+                    BepinLogger.LogError("Error when checking for yaku victory, " +
+                        "number of yaku not found");
+                    return;
+                }
+                charClear = CheckedYaku.Count >= yakuVictory;
+            }
+            if (charClear && difficultyClear && achievementClear && yakuClear) {
+                Client.ClearGoal();
+                goalComplete = true;
+                SaveAsync();
+            }
         }
 
         public static void setUpGameData()
@@ -409,12 +474,38 @@ namespace DemonicMahjongArchipelago
                     MaxScalingDifficulty = MinDifficulty;
                     MinDifficulty = 0;
                 }
+                options.TryGetValue("victory_condition", out object victoryConditionObj);
+                if (victoryConditionObj != null)
+                {
+                    victoryCondition = (long)victoryConditionObj;
+                }
+                options.TryGetValue("character_victory", out object characterVictoryObj);
+                if (characterVictoryObj != null)
+                {
+                    characterVictory = (long)characterVictoryObj;
+                }
+                options.TryGetValue("difficulty_victory", out object difficultyVictoryObj);
+                if (difficultyVictoryObj != null)
+                {
+                    difficultyVictory = (long)difficultyVictoryObj;
+                }
+                options.TryGetValue("achievement_victory", out object achievementVictoryObj);
+                if (achievementVictoryObj != null)
+                {
+                    achievementVictory = (long)achievementVictoryObj;
+                }
+                options.TryGetValue("yaku_victory", out object yakuVictoryObj);
+                if (yakuVictoryObj != null)
+                {
+                    yakuVictory = (long)yakuVictoryObj;
+                }
             }
             BepinLogger.LogMessage("Connection setup completed");
             ArchipelagoClient.ServerData.Index = LastProcessedItem;
             ConnectSetupComplete = true;
             ArchipelagoPlugin.ArchipelagoClient.CheckItems();
             checkAllLocations();
+            CheckGoalCompletion();
         }
 
         internal class SaveData
@@ -431,6 +522,13 @@ namespace DemonicMahjongArchipelago
             public int MaxScalingDifficulty {  get; set; }
             public Queue<ItemInfo> UnprocessedItems{ get; set; }
             public Queue<ItemInfo> FailedItems{ get; set; }
+
+            public long victoryCondition { get; set; }
+            public long characterVictory { get; set; }
+            public long difficultyVictory { get; set; }
+            public long achievementVictory { get; set; }
+            public long yakuVictory { get; set; }
+            public bool goalComplete { get; set; }
 
             // Game save data
             //private Saver saver;
@@ -450,6 +548,12 @@ namespace DemonicMahjongArchipelago
                 GameData.MaxScalingDifficulty = MaxScalingDifficulty;
                 GameData.UnprocessedItems = UnprocessedItems;
                 GameData._failedItems = FailedItems;
+                GameData.victoryCondition = victoryCondition;
+                GameData.characterVictory = characterVictory;
+                GameData.difficultyVictory = difficultyVictory;
+                GameData.achievementVictory = achievementVictory;
+                GameData.yakuVictory = yakuVictory;
+                GameData.goalComplete = goalComplete;
 
                 ArchipelagoClient.ServerData.Index = LastProcessedItem;
 
@@ -470,9 +574,15 @@ namespace DemonicMahjongArchipelago
                 this.MaxScalingDifficulty = GameData.MaxScalingDifficulty;
                 this.UnprocessedItems = GameData.UnprocessedItems;
                 this.FailedItems = GameData._failedItems;
+                this.victoryCondition = GameData.victoryCondition;
+                this.characterVictory = GameData.characterVictory;
+                this.difficultyVictory = GameData.difficultyVictory;
+                this.achievementVictory = GameData.achievementVictory;
+                this.yakuVictory = GameData.yakuVictory;
+                this.goalComplete = GameData.goalComplete;
 
-                //this._saver = GameData.SaverInstance;
-            }
+            //this._saver = GameData.SaverInstance;
+        }
         }
 
         public static async Task SaveAsync()
@@ -492,11 +602,11 @@ namespace DemonicMahjongArchipelago
                         BepinLogger.LogError("Couldn't create SaveData");
                         return;
                     }
-                    BepinLogger.LogMessage($"Saving to {path}");
+                    //BepinLogger.LogMessage($"Saving to {path}");
 
                     if (File.Exists(path))
                     {
-                        BepinLogger.LogMessage("Backing up save");
+                        //BepinLogger.LogMessage("Backing up save");
                         var backupPath = path + ".bak";
                         await using FileStream source = File.OpenRead(path);
                         if (File.Exists(backupPath)) File.Delete(backupPath);
@@ -511,7 +621,7 @@ namespace DemonicMahjongArchipelago
                     try
                     {
                         await JsonSerializer.SerializeAsync(createStream, _saveData);
-                        BepinLogger.LogMessage($"Data saved to {path}");
+                        //BepinLogger.LogMessage($"Data saved to {path}");
                     }
                     catch (Exception e)
                     {

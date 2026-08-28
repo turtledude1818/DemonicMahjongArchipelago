@@ -172,9 +172,6 @@ public class ArchipelagoClient
         ServerData.Index++;
         GameData.LastProcessedItem = ServerData.Index;
 
-        // TODO reward the item here
-        // if items can be received while in an invalid state for actually handling them, they can be placed in a local
-        // queue/collection to be handled later
         GameData.receiveItem(receivedItem);
 
     }
@@ -185,6 +182,11 @@ public class ArchipelagoClient
         {
             OnItemReceived((ReceivedItemsHelper)session.Items);
         }
+    }
+
+    public void ClearGoal()
+    {
+        session.SetGoalAchieved();
     }
 
     /// <summary>
