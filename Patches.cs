@@ -178,13 +178,13 @@ namespace DemonicMahjongArchipelago
             return false;
         }
 
-        [HarmonyPatch(typeof(MaJiang.GlobalDataCenter), "get_AvailableRelicTotalList")]
+        [HarmonyPatch(typeof(GlobalDataCenter), "get_AvailableRelicTotalList")]
         [HarmonyPrefix]
         public static bool AvailableRelicTotalList(
             ref object __result)
         {
             var list = new Il2CppSystem.Collections.Generic.List<RelicDisplay>();
-            var totallist = MaJiang.GlobalDataCenter.Instance.staticDataMgr._relicDisplayList;
+            var totallist = GlobalDataCenter.Instance.staticDataMgr._relicDisplayList;
             for (int i = 0; i < totallist.Count; i++)
             {
                 RelicId id = totallist[i].displayId;
@@ -198,13 +198,13 @@ namespace DemonicMahjongArchipelago
             return false;
         }
 
-        [HarmonyPatch(typeof(MaJiang.GlobalDataCenter), "get_AvailableXiaoChouTotalList")]
+        [HarmonyPatch(typeof(GlobalDataCenter), "get_AvailableXiaoChouTotalList")]
         [HarmonyPrefix]
         public static bool AvailableXiaoChouTotalList(
             ref object __result)
         {
             var list = new Il2CppSystem.Collections.Generic.List<XiaoChouPaiPayload>();
-            var totallist = MaJiang.GlobalDataCenter.Instance.staticDataMgr._xiaoChouPaiPayloads;
+            var totallist = GlobalDataCenter.Instance.staticDataMgr._xiaoChouPaiPayloads;
             for (int i = 0; i < totallist.Count; i++)
             {
                 XiaoChou id = totallist[i].id;
@@ -521,11 +521,17 @@ namespace DemonicMahjongArchipelago
             //    new[] { RelicId.ChuXuGuan });
             //ReversePatches.TryAddCharacter(AccountGameDataHandle.Instance ,CharacterID.TanCaiJiangShi);
         }
-        [HarmonyPatch(typeof(MaJiang.GameMap.GameMapMgr), "ContinueGame")]
+        [HarmonyPatch(typeof(GameMapMgr), "ContinueGame")]
         [HarmonyPostfix]
         public static void onContinueGame()
         {
             GameData.enterGame();
+        }
+        [HarmonyPatch(typeof(GameMapMgr), "BackToHome")]
+        [HarmonyPostfix]
+        public static void onBackToHome()
+        {
+            GameData.InGame = false;
         }
         [HarmonyPatch(typeof(GameMapMgr), "DoBattleOverFlow")]
         [HarmonyPrefix]
@@ -568,6 +574,14 @@ namespace DemonicMahjongArchipelago
                 .GetAwaiter()
                 .GetResult();
             return true;
+        }
+        [HarmonyPatch(typeof(GameMapMgr), "OnLoadMapFinish")]
+        [HarmonyPostfix]
+        public static void OnLoadMap()
+        {
+            GameData.InBattle = false;
+            GameData.InGame = true;
+            GameData.processUnprocessed();
         }
     }
     class UIPatches

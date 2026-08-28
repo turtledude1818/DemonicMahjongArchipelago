@@ -124,7 +124,7 @@ namespace DemonicMahjongArchipelago
 
         public static void onDisconnectClicked()
         {
-            ArchipelagoPlugin.ArchipelagoClient.Disconnect();
+            Task.Run(() => ArchipelagoPlugin.ArchipelagoClient.Disconnect());
         }
 
         private static GameObject MakePrefab()

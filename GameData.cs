@@ -18,7 +18,9 @@ using MaJiang.DataConstruct.Relic;
 using MaJiang.DataConstruct.XiaoChouPai;
 using MaJiang.GameMap;
 using MaJiang.GM;
+using MaJiang.PlayMaJiang;
 using MaJiang.PlayMaJiang.Player.Offering;
+using MaJiang.PlayMaJiang.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -146,7 +148,14 @@ namespace DemonicMahjongArchipelago
         {
             while (UnprocessedItems.Count > 0)
             {
-                receiveItem(UnprocessedItems.Dequeue(), true);
+                try
+                {
+                    receiveItem(UnprocessedItems.Dequeue(), true);
+                }
+                catch (ArgumentNullException ex)
+                {
+                    ArchipelagoPlugin.BepinLogger.LogError($"{ex.Message}");
+                }
             }
             UnprocessedItems = _failedItems;
             _failedItems = new Queue<ItemInfo>();
@@ -154,7 +163,8 @@ namespace DemonicMahjongArchipelago
 
         public static void receiveItem(ItemInfo item, bool fromUnprocessed = false)
         {
-            if (item == null) throw new ArgumentNullException("item");
+            if (item == null) throw new ArgumentNullException("item", "Item is null");
+            if (item.ItemId == 0) throw new ArgumentNullException("item.ItemId", "Item id could not be resolved");
             int id = (int)item.ItemId;
             var queue = fromUnprocessed ? _failedItems : UnprocessedItems;
             Il2CppSystem.Object unlockItem;
@@ -166,21 +176,13 @@ namespace DemonicMahjongArchipelago
                 queue.Enqueue(item);
                 return;
             }
-            if (!InGame)
-            {
-                if (id >= ItemNames.FILLER_OFFSET)
-                {
-                    queue.Enqueue(item);
-                    return;
-                }
-            }
             if (id < ItemNames.FIGURINE_OFFSET)
             {
                 var character = ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1];
                 if (ReceivedCharacters.Contains(character)) return;
                 ReceivedCharacters.Add(character);
                 UnlockItem(character, typeof(CharacterID));
-                unlockItem = GlobalDataCenter.Instance.GetCharacterPayload(character);
+                //unlockItem = GlobalDataCenter.Instance.GetCharacterPayload(character);
             }
             else if (id < ItemNames.RELIC_OFFSET)
             {
@@ -188,7 +190,7 @@ namespace DemonicMahjongArchipelago
                 if (ReceivedFigurines.Contains(figurine)) return;
                 ReceivedFigurines.Add(figurine);
                 UnlockItem(figurine, typeof(XiaoChou));
-                unlockItem = GlobalDataCenter.Instance.GetXiaoChouPaiPayload(figurine);
+                //unlockItem = GlobalDataCenter.Instance.GetXiaoChouPaiPayload(figurine);
             }
             else if (id < ItemNames.FILLER_OFFSET)
             {
@@ -196,13 +198,25 @@ namespace DemonicMahjongArchipelago
                 if (ReceivedRelics.Contains(relic)) return;
                 ReceivedRelics.Add(relic);
                 UnlockItem(relic, typeof(RelicId));
-                unlockItem = GlobalDataCenter.Instance.TryGetRelicDisplay(relic);
+                //unlockItem = GlobalDataCenter.Instance.TryGetRelicDisplay(relic);
             }
             else
             {
-                var name = item.ItemName;
-                if (name == null) throw new ArgumentNullException("item.name", "Item name could not be resolved");
-
+                var name = id < ItemNames.TRAP_OFFSET ? ItemNames.FillerNames[id - ItemNames.FILLER_OFFSET - 1]
+                    : ItemNames.TrapNames[id - ItemNames.TRAP_OFFSET - 1];
+                //if (InBattle || GlobalDataCenter.Instance == null)
+                //{
+                //    queue.Enqueue(item);
+                //    return;
+                //}
+                if (!InGame)
+                {
+                    if (!name.EndsWith("Essence"))
+                    {
+                        queue.Enqueue(item);
+                        return;
+                    }
+                }
                 var type = name[(name.LastIndexOf(' ') + 1)..];
                 int value;
 
@@ -224,26 +238,57 @@ namespace DemonicMahjongArchipelago
                 switch (type)
                 {
                     case "Gold":
+                        if (InBattle)
+                        {
+                            queue.Enqueue(item);
+                            break;
+                        }
                         GlobalDataCenter.Instance.SetData(GlobalDataType.Coins,
                             Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Coins) + value, 0), null);
                         break;
                     case "Energy":
+                        if (InBattle)
+                        {
+                            var playerSoul = GameObject.FindFirstObjectByType<PlayerSoul>();
+                            playerSoul._currentSoul = 
+                                Math.Max(Math.Min(value + playerSoul._currentSoul, playerSoul.maxSoul), 0);
+                            //playerSoul.DirectlyUpdateDisplay(playerSoul._currentSoul);
+                            break;
+                        }
                         GlobalDataCenter.Instance.SetData(GlobalDataType.Soul,
-                            Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Soul) + value, 0), null);
+                            Math.Min(
+                                Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Soul) + value, 0),
+                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.SoulMax)),
+                                null);
                         break;
                     case "HP":
+                        if (InBattle)
+                        {
+                            var playerHp = GameObject.FindFirstObjectByType<PlayerHp>();
+                            playerHp.Hp = Math.Max(Math.Min(value + playerHp.Hp, playerHp.hpMax), 0);
+                            //playerHp.UpdateHpDisplay(playerHp.Hp);
+                            break;
+                        }
                         GlobalDataCenter.Instance.SetData(GlobalDataType.Hp,
-                            Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Hp) + value, 0), null);
+                            Math.Min(
+                                Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Hp) + value, 0),
+                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.HpMax)),null);
                         break;
                     case "Essence":
+                        if (InBattle || AccountGameDataHandle.Instance == null)
+                        {
+                            queue.Enqueue(item);
+                            break;
+                        }
                         AccountGameDataHandle.Instance.UpdateToken(MaJiang.TokenStore.TokenType.LowToken, value);
                         break;
                     default:
                         throw new NotImplementedException($"{name} is not a valid item");
                 }
-                // Don't pop item
+                // Don't pop panel item
                 return;
             }
+            // Causing crashes so removed for now
             //if (unlockItem != null) ArchipelagoUI.ItemPopPanel(unlockItem.Cast<IItemInfo>());
         }
         // Have to reimplement rather than call game functions because of AccessViolationExceptions

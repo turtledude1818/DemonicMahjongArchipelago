@@ -146,11 +146,11 @@ public class ArchipelagoClient
     /// </summary>
     internal async Task Disconnect()
     {
-       ArchipelagoPlugin.BepinLogger.LogDebug("disconnecting from server...");
+        //await GameData.SaveAsync();
+        ArchipelagoPlugin.BepinLogger.LogDebug("disconnecting from server...");
         session?.Socket.DisconnectAsync();
         session = null;
         Authenticated = false;
-        await GameData.SaveAsync();
     }
 
     public void SendMessage(string message)
@@ -172,7 +172,14 @@ public class ArchipelagoClient
         ServerData.Index++;
         GameData.LastProcessedItem = ServerData.Index;
 
-        GameData.receiveItem(receivedItem);
+        try
+        {
+            GameData.receiveItem(receivedItem);
+        }
+        catch (ArgumentNullException ex)
+        {
+            ArchipelagoPlugin.BepinLogger.LogError($"{ex.Message}");
+        }
 
     }
 

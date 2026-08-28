@@ -26,6 +26,8 @@ namespace DemonicMahjongArchipelago
 
 		public const int NUM_CHARACTERS = 30;
 
+		public const int DLC_OFFSET = ITEM_OFFSET + 100000;
+
         public static Dictionary<CharacterID, string> CharacterNames = new Dictionary<CharacterID, string>
         {
 			{CharacterID.TanChiJiangShi, "Chowbo"},
@@ -458,5 +460,18 @@ namespace DemonicMahjongArchipelago
 		};
 
         public static List<Offering> OfferingIds = OfferingNames.Keys.ToList();
+
+		public static List<string> FillerNames =
+		[
+            "50 Gold",
+            "10 Energy",
+            "100 Essence",
+        ];
+
+		public static List<string> TrapNames =
+		[
+            "Lose 50 Gold",
+            "Lose 10 Energy",
+        ];
     }
 }
