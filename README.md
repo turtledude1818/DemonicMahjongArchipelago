@@ -3,7 +3,7 @@ An [Archipelago](https://github.com/ArchipelagoMW/Archipelago) implementation fo
 
 ## Installation
 - Install the latest [BepInEx](https://github.com/bepinex/bepinex) bleeding edge IL2CPP build in the game's base Steam directory.
-- Unzip and place the Demonic Mahjong Archipelago folder with three dll files into the plugins folder of BepInEx.
+- Unzip and place the DemonicMahjongArchipelago folder with three dll files into the plugins folder of BepInEx.
 - If the options menu has a Archipelago button, the mod is installed. Use this menu to connect the client.
 - Install the apworld file through the Archipelago launcher.
 
