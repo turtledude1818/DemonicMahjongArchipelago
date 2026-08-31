@@ -76,17 +76,6 @@ namespace DemonicMahjongArchipelago
             // The compiler will crash if the original is used for some reason, so use a Reverse Patch
             ReversePatches.OpenUI(PopUIManager.Instance, prefab, openParams);
             GameObject.Destroy(prefab);
-            // Add the onClick listener to the connect button
-            //var settingPanel = GameObject.Find("ArchipelagoConnectPanel");
-            //if (settingPanel != null)
-            //{
-            //    var connectButton = settingPanel.transform.Find("ConnectButton");
-            //    if (connectButton != null)
-            //    {
-            //        connectButton.GetComponent<Button>().onClick.RemoveAllListeners();
-            //        connectButton.GetComponent<Button>().onClick.AddListener(new Action(onConnectClicked));
-            //    }
-            //}
             var connectButton = GameObject.Find("ConnectButton");
             if (connectButton == null)
             {
@@ -124,7 +113,9 @@ namespace DemonicMahjongArchipelago
 
         public static void onDisconnectClicked()
         {
+            if (!GameData.ConnectSetupComplete) return;
             Task.Run(() => ArchipelagoPlugin.ArchipelagoClient.Disconnect());
+            ArchipelagoUI.CreateInfoPanel("Disconnected", "Client has been disconnected from archipelago server.");
         }
 
         private static GameObject MakePrefab()
@@ -132,11 +123,6 @@ namespace DemonicMahjongArchipelago
             var prefab = GameObject.Instantiate(MaJiang.GameMap.GameMapMgr.Instance.uiConfig.MapMenuSettingPanel);
             prefab.SetActive(false);
             prefab.name = "ArchipelagoConnection";
-
-            //var prevComponent = prefab.GetComponent<SettingsPanel>();
-            //var component = prefab.AddComponent<ArchipelagoPanel>();
-            //CopyComponent<IManagedUI>(component, prevComponent.Cast<IManagedUI>());
-            //Component.Destroy(prevComponent);
 
             var bg = prefab.transform.Find("Bg");
             var title = bg.Find("LineTitle_1").Find("Text");
@@ -201,24 +187,24 @@ namespace DemonicMahjongArchipelago
             textObject.GetComponent<TextMeshProUGUI>().text = message;
             var button = panel.Find("FunctionButtons").Find("Right");
             button.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Confirm";
-            if (reconnect)
-            {
-                var reconnectButton = panel.Find("FunctionButtons").Find("Left");
-                button.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Reconnect";
-            }
+            //if (reconnect)
+            //{
+            //    var reconnectButton = panel.Find("FunctionButtons").Find("Left");
+            //    button.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Reconnect";
+            //}
 
             ReversePatches.OpenUI(PopUIManager.Instance, popup);
             GameObject.Find("NotConnectedPopup(Clone)").transform.Find("Panel").Find("FunctionButtons")
                 .Find("Right").gameObject.SetActive(true);
-            if (reconnect)
-            {
-                var reconnectButton = GameObject.Find("NotConnectedPopup(Clone)")
-                    .transform.Find("Panel").Find("FunctionButtons").Find("Left");
-                reconnectButton.GetComponent<Button>().onClick.RemoveAllListeners();
-                reconnectButton.GetComponent<Button>().onClick
-                    .AddListener(new Action(ArchipelagoPlugin.ArchipelagoClient.Connect));
-                reconnectButton.gameObject.SetActive(true);
-            }
+            //if (reconnect)
+            //{
+            //    var reconnectButton = GameObject.Find("NotConnectedPopup(Clone)")
+            //        .transform.Find("Panel").Find("FunctionButtons").Find("Left");
+            //    reconnectButton.GetComponent<Button>().onClick.RemoveAllListeners();
+            //    reconnectButton.GetComponent<Button>().onClick
+            //        .AddListener(new Action(ArchipelagoPlugin.ArchipelagoClient.Connect));
+            //    reconnectButton.gameObject.SetActive(true);
+            //}
             GameObject.Destroy(popup);
         }
 

@@ -53,7 +53,6 @@ namespace DemonicMahjongArchipelago
         private static string _savePath;
         internal static string Seed;
         public static int LastProcessedItem = -1;
-        //public static List<(object, Type)> unProcessedItems = new List<(object item, Type type)>();
         public static Queue<ItemInfo> UnprocessedItems = new Queue<ItemInfo>();
         private static Queue<ItemInfo> _failedItems = new Queue<ItemInfo>();
         private static PlayerSoul _playerSoul;
@@ -207,11 +206,6 @@ namespace DemonicMahjongArchipelago
             {
                 var name = id < ItemNames.TRAP_OFFSET ? ItemNames.FillerNames[id - ItemNames.FILLER_OFFSET - 1]
                     : ItemNames.TrapNames[id - ItemNames.TRAP_OFFSET - 1];
-                //if (InBattle || GlobalDataCenter.Instance == null)
-                //{
-                //    queue.Enqueue(item);
-                //    return;
-                //}
                 if (!InGame)
                 {
                     queue.Enqueue(item);
@@ -266,6 +260,7 @@ namespace DemonicMahjongArchipelago
                                 }
                                 _playerSoul._currentSoul =
                                     Math.Max(Math.Min(value + _playerSoul._currentSoul, _playerSoul.maxSoul), 0);
+                                // Causing crashes
                                 //playerSoul.DirectlyUpdateDisplay(playerSoul._currentSoul);
                                 break;
                             }
@@ -282,6 +277,7 @@ namespace DemonicMahjongArchipelago
                                     var playerHp = GameObject.FindFirstObjectByType<PlayerHp>();
                                     playerHp.Hp = Math.Max(Math.Min(value + playerHp.Hp, playerHp.hpMax), 0);
                                 });
+                                // Causing crashes
                                 //playerHp.UpdateHpDisplay(playerHp.Hp);
                                 break;
                             }
@@ -307,7 +303,7 @@ namespace DemonicMahjongArchipelago
                     BepinLogger.LogError(ex);
                     queue.Enqueue(item);
                 }
-                // Don't pop panel item
+                // Don't pop panel item for filler
                 return;
             }
             // Causing crashes so removed for now
@@ -571,11 +567,43 @@ namespace DemonicMahjongArchipelago
             Client = client;
         }
 
+        public static void ResetValues()
+        {
+            // Game Data Management
+            InGame = false;
+            InBattle = false;
+            Difficulty = 0;
+            MinDifficulty = 0;
+            MaxScalingDifficulty = 0;
+            Character = 0;
+            LastProcessedItem = -1;
+            UnprocessedItems = new Queue<ItemInfo>();
+            _failedItems = new Queue<ItemInfo>();
+
+            // Items
+            ReceivedRelics.Clear();
+            ReceivedFigurines.Clear();
+            ReceivedCharacters.Clear();
+
+            // Locations
+            CheckedYaku.Clear();
+            MaxStages.Clear();
+            CheckedAchievements.Clear();
+            HighestDifficulty = -1;
+
+            victoryCondition = -1;
+            characterVictory = -1;
+            difficultyVictory = -1;
+            achievementVictory = -1;
+            yakuVictory = -1;
+            goalComplete = false;
+            options.Clear();
+        }
+
         public static async Task OnConnectSetup(LoginSuccessful success)
         {
             SaverInstance = GameManager.Instance.Saver;
             await LoadSaveAsync();
-            //if (ConnectSetupComplete) return;
             if (_saveData == null)
             {
                 // Change game values (TODO: this will wipe character unlock progress, check when to apply)
@@ -585,7 +613,8 @@ namespace DemonicMahjongArchipelago
                 //AccountGameDataHandle.Instance.gameData.achievements.ownedRoleSet =
                 //    new Il2CppSystem.Collections.Generic.List<CharacterSaveData>()
                 //    .ToArray().Cast<Il2CppReferenceArray<CharacterSaveData>>();
-
+                
+                ResetValues();
 
                 // Get/Set Options
                 options = new Dictionary<string, object>(success.SlotData);
@@ -709,8 +738,6 @@ namespace DemonicMahjongArchipelago
                 this.achievementVictory = GameData.achievementVictory;
                 this.yakuVictory = GameData.yakuVictory;
                 this.goalComplete = GameData.goalComplete;
-
-            //this._saver = GameData.SaverInstance;
         }
         }
 

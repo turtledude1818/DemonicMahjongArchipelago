@@ -20,7 +20,7 @@ public class ArchipelagoClient
     private bool attemptingConnection;
 
     public static ArchipelagoData ServerData = new();
-    private DeathLinkHandler DeathLinkHandler;
+    //private DeathLinkHandler DeathLinkHandler;
     private ArchipelagoSession session;
 
     public void checkLocation(int id)
@@ -112,7 +112,7 @@ public class ArchipelagoClient
             ServerData.SetupSession(success.SlotData, session.RoomState.Seed);
             Authenticated = true;
 
-            DeathLinkHandler = new(session.CreateDeathLinkService(), ServerData.SlotName);
+            //DeathLinkHandler = new(session.CreateDeathLinkService(), ServerData.SlotName);
             //session.Locations.CompleteLocationChecksAsync(ServerData.CheckedLocations.ToArray());
             outText = $"Successfully connected to {ServerData.Uri} as {ServerData.SlotName}!";
 
@@ -146,6 +146,7 @@ public class ArchipelagoClient
     /// </summary>
     internal async Task Disconnect()
     {
+        GameData.ConnectSetupComplete = false;
         //await GameData.SaveAsync();
         ArchipelagoPlugin.BepinLogger.LogDebug("disconnecting from server...");
         session?.Socket.DisconnectAsync();
@@ -227,7 +228,5 @@ public class ArchipelagoClient
     {
         ArchipelagoPlugin.BepinLogger.LogError($"Connection to Archipelago lost: {reason}");
         Disconnect();
-
-        ArchipelagoUI.CreateInfoPanel("Disconnected", "Client has been disconnected from archipelago server.", true);
     }
 }

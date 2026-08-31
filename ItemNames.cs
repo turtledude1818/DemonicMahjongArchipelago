@@ -41,8 +41,8 @@ namespace DemonicMahjongArchipelago
 			{CharacterID.HeiWuChang, "Black Impermanence"},
 			{CharacterID.BaiWuChang, "White Impermanence"},
 			{CharacterID.DiTing, "Diting"},
-			//{CharacterID.NiuTouMaMian, "Abang Ox-head & Aqi Horse-face"},		// Not Implemented?
-			//{CharacterID.HeiBaiWuChang, "Black & White Impermanence"},		// Not Implemented?
+			//{CharacterID.NiuTouMaMian, "Abang Ox-head & Aqi Horse-face"},		// NPC Only
+			//{CharacterID.HeiBaiWuChang, "Black & White Impermanence"},		// NPC Only
 			{CharacterID.MengPo, "Meng Po"},
 			{CharacterID.QinGuangWang, "King Qinguang"},
 			{CharacterID.YanLuoWang, "King Yama"},
@@ -444,6 +444,7 @@ namespace DemonicMahjongArchipelago
                         {Offering.TangHua, "Sugar Painting"},
                         {Offering.SongLan, "Woad"},
                         {Offering.SanSeHua, "Chroma Petal"},
+						// Meng Po items
 //                        {Offering.HaoMao, "Monkefur"},
 //                        {Offering.BubbleTeaGuiHuoLinGuangNaiLv, "Green Ignis"},
 //                        {Offering.BubbleTeaSuiJinZhiHuiNaiGai, "Ash Foam"},

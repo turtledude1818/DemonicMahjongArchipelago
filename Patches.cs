@@ -95,7 +95,7 @@ namespace DemonicMahjongArchipelago
         // Fix shop giving locked items
         [HarmonyPatch(typeof(ShopExtend), "TryGetBackupList")]
         [HarmonyPrefix]
-        static bool blockBackupList() //sic
+        static bool blockBackupList()
         {
             return false;
         }
@@ -116,7 +116,6 @@ namespace DemonicMahjongArchipelago
         static bool CharacterSelect(ref Il2CppSystem.Collections.Generic.List<CharacterID> __result)
         {
             __result = new Il2CppSystem.Collections.Generic.List<CharacterID>();
-            //foreach (CharacterID id in GameData.startingCharacters.Concat(GameData.receivedCharacters))
             foreach (CharacterID id in GameData.ReceivedCharacters)
             {
                 __result.Add(id);
@@ -188,7 +187,6 @@ namespace DemonicMahjongArchipelago
             for (int i = 0; i < totallist.Count; i++)
             {
                 RelicId id = totallist[i].displayId;
-                //if (GameData.startingRelics.Concat(GameData.receivedRelics).Contains(id))
                 if (GameData.ReceivedRelics.Contains(id))
                     {
                     list.Add(totallist[i]);
@@ -208,7 +206,6 @@ namespace DemonicMahjongArchipelago
             for (int i = 0; i < totallist.Count; i++)
             {
                 XiaoChou id = totallist[i].id;
-                //if (GameData.startingRelics.Concat(GameData.receivedRelics).Contains(id))
                 if (GameData.ReceivedFigurines.Contains(id))
                 {
                     list.Add(totallist[i]);
@@ -255,7 +252,6 @@ namespace DemonicMahjongArchipelago
             }
             array._array = list.ToArray();
         }
-
         //[HarmonyPatch(typeof(NodeShop), "GetRandom")]
         //[HarmonyPrefix]
         //public static bool ShopGetRandom(ref Il2CppSystem.Collections.Generic.IReadOnlyList<IItemInfo> _exclusive)
@@ -296,22 +292,6 @@ namespace DemonicMahjongArchipelago
             __result = xiaoChouNeedUnlocked[index];
             return false;
         }
-        //[HarmonyPatch(typeof(XiaoChouPaiNeedUnLockedList), "Count", MethodType.Getter)]
-        //[HarmonyPrefix]
-        //public static bool XiaoChouNeedUnLockedListCount(ref int __result)
-        //{
-        //    if (xiaoChouNeedUnlocked == null) makeStartingFigurines();
-        //    __result = xiaoChouNeedUnlocked.Length;
-        //    return false;
-        //}
-        //[HarmonyPatch(typeof(XiaoChouPaiNeedUnLockedList), "XiaoChouIds", MethodType.Getter)]
-        //[HarmonyPrefix]
-        //public static bool XiaoChouNeedUnLockedListXiaoChouIds(ref Il2CppArrayBase<XiaoChou> __result)
-        //{
-        //    if (xiaoChouNeedUnlocked == null) makeStartingFigurines();
-        //    __result = xiaoChouNeedUnlockedList.ToArray();
-        //    return false;
-        //}
         [HarmonyPatch(typeof(XiaoChouPaiNeedUnLockedList), "GetEnumerator")]
         [HarmonyPrefix]
         public static bool XiaoChouNeedUnLockedListEnumerator(
@@ -325,8 +305,6 @@ namespace DemonicMahjongArchipelago
         //Relics
         public static void makeStartingRelics()
         {
-            //relicNeedUnlocked = Enum.GetValues<RelicId>().Except<RelicId>(GameData.startingRelics).
-            //    Select<RelicId, int>(relic => (int)relic).ToArray<int>();
             relicNeedUnlocked = Enum.GetValues<RelicId>().Select<RelicId, int>(relic => (int)relic).ToArray<int>();
             var list = new Il2CppSystem.Collections.Generic.List<int>();
             foreach (var f in relicNeedUnlocked)
@@ -343,23 +321,6 @@ namespace DemonicMahjongArchipelago
             __result = relicNeedUnlocked[index];
             return false;
         }
-        //[HarmonyPatch(typeof(RelicNeedUnLockedList), "Count", MethodType.Getter)]
-        //[HarmonyPrefix]
-        //public static bool RelicNeedUnLockedListCount(ref int __result, ref bool __runOriginal)
-        //{
-        //    if (relicNeedUnlocked == null) makeStartingRelics();
-        //    __result = relicNeedUnlocked.Length;
-        //    __runOriginal = false;
-        //    return false;
-        //}
-        //[HarmonyPatch(typeof(RelicNeedUnLockedList), "value", MethodType.Getter)]
-        //[HarmonyPrefix]
-        //public static bool RelicIdNeedUnLockedListValue(ref Il2CppArrayBase<int> __result)
-        //{
-        //    if (relicNeedUnlocked == null) makeStartingRelics();
-        //    __result = relicNeedUnlockedList.ToArray();
-        //    return false;
-        //}
         [HarmonyPatch(typeof(RelicNeedUnLockedList), "GetEnumerator")]
         [HarmonyPrefix]
         public static bool RelicIdNeedUnLockedListEnumerator(
@@ -413,18 +374,6 @@ namespace DemonicMahjongArchipelago
             GameData.CheckedYaku.Add(fanZhong);
             GameData.checkLocation(fanZhong, "Yaku");
         }
-        // Change to override to fix unlocking items after DLC update
-        //[HarmonyPatch(typeof(Saver), "PlayFanNewFoundAdd")]
-        //[HarmonyPrefix]
-        //public static bool NewYaku(FanZhong fanZhong, Saver __instance)
-        //{
-        //    GameData.checkLocation(fanZhong, "Yaku");
-        //    GameData.CheckedYaku.Add(fanZhong);
-        //
-        //    __instance._playFanNewFound.Add(fanZhong);
-        //
-        //    return false;
-        //}
 
         [HarmonyPatch(typeof(AchievementRuntime), "Get")]
         [HarmonyPostfix]
@@ -490,11 +439,11 @@ namespace DemonicMahjongArchipelago
             return true;
         }
 
+        // Not implemented
         [HarmonyPatch(typeof(OrderButton), "Buy")]
         [HarmonyPrefix]
         public static bool CheckMilkTea(OrderButton __instance)
         {
-            // Not implemented
             //GameData.checkLocation(__instance.OnlyId, "Milk Tea");
             return true;
         }
@@ -509,7 +458,6 @@ namespace DemonicMahjongArchipelago
             GameData.setUpGameData();
             return true;
         }
-        //[HarmonyPatch(typeof(MaJiang.GameMap.GameMapMgr), "StartGameLog")]
         [HarmonyPatch(typeof(MaJiang.GameMap.GameMapMgr), "GenNewMap")]
         [HarmonyPostfix]
         public static void onNewGame()
