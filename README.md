@@ -16,6 +16,8 @@ C:/Users/\{user\}/AppData/LocalLow/Boxed Lightning Games/Demonic Mahjong/Save <b
 Check the BepinEx console or log for a message starting with \"Save path:\" otherwise.
 - There are a lot of locations that are available early in logic but are unlikely to happen without specifically pursuing them. Feel free to use hints/spoilers if another game is stuck.
 - Do not use merit or essence to unlock locked items.
+- Report issues in the [Discord Channel](https://discord.com/channels/731205301247803413/1521511772035481670) or on Github. <br>
+If you need a quicker response or just have a question, ask on Discord.
 
 ## Known Issues
 - Newly received characters may not show properly in the Characters menu until re-entering the menu a second time.
