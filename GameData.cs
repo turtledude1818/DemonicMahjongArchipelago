@@ -21,6 +21,7 @@ using MaJiang.GM;
 using MaJiang.PlayMaJiang;
 using MaJiang.PlayMaJiang.Player.Offering;
 using MaJiang.PlayMaJiang.UI;
+using MaJiang.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -55,6 +56,7 @@ namespace DemonicMahjongArchipelago
         //public static List<(object, Type)> unProcessedItems = new List<(object item, Type type)>();
         public static Queue<ItemInfo> UnprocessedItems = new Queue<ItemInfo>();
         private static Queue<ItemInfo> _failedItems = new Queue<ItemInfo>();
+        private static PlayerSoul _playerSoul;
 
         // Items
         public static HashSet<RelicId> ReceivedRelics = new HashSet<RelicId>();
@@ -77,6 +79,7 @@ namespace DemonicMahjongArchipelago
         public static long achievementVictory = -1;
         public static long yakuVictory = -1;
         public static bool goalComplete = false;
+        public static Dictionary<string, object> options;
 
         public static bool ConnectSetupComplete = false;
         private static bool _saving = false;
@@ -211,11 +214,8 @@ namespace DemonicMahjongArchipelago
                 //}
                 if (!InGame)
                 {
-                    if (!name.EndsWith("Essence"))
-                    {
-                        queue.Enqueue(item);
-                        return;
-                    }
+                    queue.Enqueue(item);
+                    return;
                 }
                 var type = name[(name.LastIndexOf(' ') + 1)..];
                 int value;
@@ -235,55 +235,77 @@ namespace DemonicMahjongArchipelago
                         throw new NotImplementedException($"{name} is not a valid item");
                     }
                 }
-                switch (type)
+                try
                 {
-                    case "Gold":
-                        if (InBattle)
-                        {
-                            queue.Enqueue(item);
+                    switch (type)
+                    {
+                        case "Gold":
+                            if (InBattle)
+                            {
+                                queue.Enqueue(item);
+                                break;
+                            }
+                            GlobalDataCenter.Instance.SetData(GlobalDataType.Coins,Math.Max(
+                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Coins) + value, 0), null);
                             break;
-                        }
-                        GlobalDataCenter.Instance.SetData(GlobalDataType.Coins,
-                            Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Coins) + value, 0), null);
-                        break;
-                    case "Energy":
-                        if (InBattle)
-                        {
-                            var playerSoul = GameObject.FindFirstObjectByType<PlayerSoul>();
-                            playerSoul._currentSoul = 
-                                Math.Max(Math.Min(value + playerSoul._currentSoul, playerSoul.maxSoul), 0);
-                            //playerSoul.DirectlyUpdateDisplay(playerSoul._currentSoul);
+                        case "Energy":
+                            if (InBattle)
+                            {
+                                if (_playerSoul == null)
+                                {
+                                    ArchipelagoPlugin.RunOnMainThread(() =>
+                                    {
+                                        _playerSoul = GameObject.FindFirstObjectByType<PlayerSoul>();
+                                    });
+                                    break;
+                                }
+                                if (_playerSoul == null || _playerSoul._currentSoul == _playerSoul.maxSoul)
+                                {
+                                    queue.Enqueue(item);
+                                    break;
+                                }
+                                _playerSoul._currentSoul =
+                                    Math.Max(Math.Min(value + _playerSoul._currentSoul, _playerSoul.maxSoul), 0);
+                                //playerSoul.DirectlyUpdateDisplay(playerSoul._currentSoul);
+                                break;
+                            }
+                            GlobalDataCenter.Instance.SetData(GlobalDataType.Soul,
+                                Math.Min(Math.Max(
+                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Soul) + value, 0),
+                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.SoulMax)), null);
                             break;
-                        }
-                        GlobalDataCenter.Instance.SetData(GlobalDataType.Soul,
-                            Math.Min(
-                                Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Soul) + value, 0),
-                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.SoulMax)),
-                                null);
-                        break;
-                    case "HP":
-                        if (InBattle)
-                        {
-                            var playerHp = GameObject.FindFirstObjectByType<PlayerHp>();
-                            playerHp.Hp = Math.Max(Math.Min(value + playerHp.Hp, playerHp.hpMax), 0);
-                            //playerHp.UpdateHpDisplay(playerHp.Hp);
-                            break;
-                        }
-                        GlobalDataCenter.Instance.SetData(GlobalDataType.Hp,
-                            Math.Min(
+                        case "HP":
+                            if (InBattle)
+                            {
+                                ArchipelagoPlugin.RunOnMainThread(() =>
+                                {
+                                    var playerHp = GameObject.FindFirstObjectByType<PlayerHp>();
+                                    playerHp.Hp = Math.Max(Math.Min(value + playerHp.Hp, playerHp.hpMax), 0);
+                                });
+                                //playerHp.UpdateHpDisplay(playerHp.Hp);
+                                break;
+                            }
+                            GlobalDataCenter.Instance.SetData(GlobalDataType.Hp,
+                                Math.Min(
                                 Math.Max(GlobalDataCenter.Instance.GetData<int>(GlobalDataType.Hp) + value, 0),
-                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.HpMax)),null);
-                        break;
-                    case "Essence":
-                        if (InBattle || AccountGameDataHandle.Instance == null)
-                        {
-                            queue.Enqueue(item);
+                                GlobalDataCenter.Instance.GetData<int>(GlobalDataType.HpMax)), null);
                             break;
-                        }
-                        AccountGameDataHandle.Instance.UpdateToken(MaJiang.TokenStore.TokenType.LowToken, value);
-                        break;
-                    default:
-                        throw new NotImplementedException($"{name} is not a valid item");
+                        case "Merit":
+                            if (InBattle || AccountGameDataHandle.Instance == null)
+                            {
+                                queue.Enqueue(item);
+                                break;
+                            }
+                            AccountGameDataHandle.Instance.UpdateToken(MaJiang.TokenStore.TokenType.LowToken, value);
+                            break;
+                        default:
+                            throw new NotImplementedException($"{name} is not a valid item");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    BepinLogger.LogError(ex);
+                    queue.Enqueue(item);
                 }
                 // Don't pop panel item
                 return;
@@ -292,21 +314,20 @@ namespace DemonicMahjongArchipelago
             //if (unlockItem != null) ArchipelagoUI.ItemPopPanel(unlockItem.Cast<IItemInfo>());
         }
         // Have to reimplement rather than call game functions because of AccessViolationExceptions
-        public static void UnlockItem(object item, Type type)
+        // Returns true if already unlocked, false otherwise
+        public static bool UnlockItem(object item, Type type)
         {
             if (type == typeof(CharacterID))
             {
                 var characterId = (CharacterID)item;
-                var __instance = AccountGameDataHandle.Instance;
-
-                var saver = GameManager.Instance.Saver;
-                //try { if (saver._freeModeUnLockCharacterList.Contains(characterId)) return; } catch { }
-                saver._freeModeUnLockCharacterList.Add(characterId);
+                var __instance = SaverInstance;
+                //if (saver._freeModeUnLockCharacterList.Contains(characterId)) return true;
+                __instance._freeModeUnLockCharacterList.Add(characterId);
 
                 // Reimplement AddCharacterSaverData(characterId, writeSave)
                 var saveData = new CharacterSaveData(characterId);
                 saveData.highestDifficulty = 0;
-                var roleSet = __instance.gameData.achievements.ownedRoleSet;
+                var roleSet = AccountGameDataHandle.Instance.gameData.achievements.ownedRoleSet;
                 roleSet.AddItem(saveData);
             }
             else if (type == typeof(XiaoChou))
@@ -314,7 +335,7 @@ namespace DemonicMahjongArchipelago
                 var lingYongId = (XiaoChou)item;
                 var __instance = SaverInstance;
 
-                //try { if (__instance._unlockedLingYongList.Contains(lingYongId)) return; } catch { }
+                //if (__instance._unlockedLingYongList.Contains(lingYongId)) return true;
                 __instance._unlockedLingYongList.Add(lingYongId);
                 var curr = __instance.CurrentUnlockedLingYongList.Cast<Il2CppSystem.Collections.Generic.List<int>>();
                 curr.Add(((int)lingYongId));
@@ -326,14 +347,14 @@ namespace DemonicMahjongArchipelago
                 var relicId = ((RelicId)item).ToString();
                 var __instance = SaverInstance;
 
-                //try { if (__instance._unlockedRelicList.Contains(relicId)) return; } catch { }
+                //if (__instance._unlockedRelicList.Contains(relicId)) return true;
                 __instance._unlockedRelicList.Add(relicId);
                 var curr = __instance.CurrentUnlockedRelicList.Cast<Il2CppSystem.Collections.Generic.List<string>>();
                 curr.Add(relicId);
                 __instance.CurrentUnlockedRelicList =
                     curr.Cast<Il2CppSystem.Collections.Generic.IReadOnlyList<string>>();
             }
-            else return;
+            return false;
         }
 
         public static bool IsItemUnlocked(object item)
@@ -347,9 +368,66 @@ namespace DemonicMahjongArchipelago
             };
         }
 
-        public static void CheckGoalCompletion()
+        public static bool IsItemUnlocked(ItemInfo item)
         {
-            if (goalComplete) return;
+            if (item == null) return true;
+            var id = (int)item.ItemId;
+            if (id < ItemNames.FIGURINE_OFFSET)
+            {
+                return IsItemUnlocked(ItemNames.CharacterIds[id - ItemNames.CHAR_OFFSET - 1]);
+            }
+            else if (id < ItemNames.RELIC_OFFSET)
+            {
+                return IsItemUnlocked(ItemNames.FigurineIds[id - ItemNames.FIGURINE_OFFSET - 1]);
+            }
+            else if (id < ItemNames.FILLER_OFFSET)
+            {
+                return IsItemUnlocked(ItemNames.RelicIds[id - ItemNames.RELIC_OFFSET - 1]);
+            }
+            else return true;
+        }
+
+        public static bool CheckReceivedItemsUnlocked()
+        {
+            bool failure = false;
+            var saver = GameManager.Instance.Saver;
+            foreach (var character in ReceivedCharacters.ToList())
+            {
+                if (!AccountGameDataHandle.Instance.gameData.achievements.ownedRoleSet.Select(saveData =>
+                {
+                    return saveData.CharacterID;
+                }).ToList().Contains(character))
+                {
+                    ReceivedCharacters.Remove(character);
+                    BepinLogger.LogWarning($"Item {character.ToString()} not properly received");
+                    failure = true;
+                }
+            }
+            foreach (var figurine in ReceivedFigurines.ToList())
+            {
+                if (!saver._unlockedLingYongList.Contains(figurine))
+                {
+                    ReceivedFigurines.Remove(figurine);
+                    BepinLogger.LogWarning($"Item {figurine.ToString()} not properly received");
+                    failure = true;
+                }
+            }
+            foreach (var relic in ReceivedRelics.ToList())
+            {
+                if (!saver._unlockedRelicList.Contains(relic.ToString()))
+                {
+                    ReceivedRelics.Remove(relic);
+                    BepinLogger.LogWarning($"Item {relic.ToString()} not properly received");
+                    failure = true;
+                }
+            }
+            return failure;
+        }
+
+        public static bool CheckGoalCompletion()
+        {
+            if (goalComplete) return true;
+            if (victoryCondition < 0) return true;
 
             bool charClear = true;
             bool difficultyClear = true;
@@ -361,7 +439,7 @@ namespace DemonicMahjongArchipelago
                 {
                     BepinLogger.LogError("Error when checking for character victory, " +
                         "number of characters not found");
-                    return;
+                    return false;
                 }
                 charClear = MaxStages.Where(kvp => 
                     kvp.Value == 4
@@ -373,7 +451,7 @@ namespace DemonicMahjongArchipelago
                 {
                     BepinLogger.LogError("Error when checking for difficulty victory, " +
                         "difficulty option not found");
-                    return;
+                    return false;
                 }
                 difficultyClear = HighestDifficulty >= difficultyVictory;
             }
@@ -383,9 +461,9 @@ namespace DemonicMahjongArchipelago
                 {
                     BepinLogger.LogError("Error when checking for achievement victory, " +
                         "number of achievements not found");
-                    return;
+                    return false;
                 }
-                charClear = CheckedAchievements.Count >= achievementVictory;
+                achievementClear = CheckedAchievements.Count >= achievementVictory;
             }
             if (victoryCondition == 4 || (victoryCondition == 0 && yakuVictory > 0))
             {
@@ -393,15 +471,17 @@ namespace DemonicMahjongArchipelago
                 {
                     BepinLogger.LogError("Error when checking for yaku victory, " +
                         "number of yaku not found");
-                    return;
+                    return false;
                 }
-                charClear = CheckedYaku.Count >= yakuVictory;
+                yakuClear = CheckedYaku.Count >= yakuVictory;
             }
             if (charClear && difficultyClear && achievementClear && yakuClear) {
                 Client.ClearGoal();
                 goalComplete = true;
                 SaveAsync();
+                return true;
             }
+            return false;
         }
 
         public static void setUpGameData()
@@ -410,6 +490,7 @@ namespace DemonicMahjongArchipelago
             SaverInstance = GameManagerInstance.Saver;
             var index = GameManagerInstance.GameSaverUtil._saverPath.LastIndexOf('/');
             _savePath = GameManagerInstance.GameSaverUtil._saverPath[..index];
+            BepinLogger.LogInfo($"Save path: {_savePath}");
 
             // Clear rewards for all FanZhong
             var yakuList = GlobalDataCenter.Instance.staticDataMgr._fanZhongPayloadList;
@@ -493,8 +574,7 @@ namespace DemonicMahjongArchipelago
         public static async Task OnConnectSetup(LoginSuccessful success)
         {
             SaverInstance = GameManager.Instance.Saver;
-            BepinLogger.LogInfo("Connection setup: loading save");
-            await GameData.LoadSaveAsync();
+            await LoadSaveAsync();
             //if (ConnectSetupComplete) return;
             if (_saveData == null)
             {
@@ -508,7 +588,7 @@ namespace DemonicMahjongArchipelago
 
 
                 // Get/Set Options
-                Dictionary<string, object> options = success.SlotData;
+                options = new Dictionary<string, object>(success.SlotData);
 
                 options.TryGetValue("character_min_difficulty", out object minDifficulty);
                 if (minDifficulty != null) MinDifficulty = (int)((long)minDifficulty);
@@ -548,6 +628,10 @@ namespace DemonicMahjongArchipelago
             BepinLogger.LogMessage("Connection setup completed");
             ArchipelagoClient.ServerData.Index = LastProcessedItem;
             ConnectSetupComplete = true;
+            if (CheckReceivedItemsUnlocked())
+            {
+                Client.SyncItems();
+            }
             ArchipelagoPlugin.ArchipelagoClient.CheckItems();
             checkAllLocations();
             CheckGoalCompletion();

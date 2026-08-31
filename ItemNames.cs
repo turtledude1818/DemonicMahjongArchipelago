@@ -465,7 +465,7 @@ namespace DemonicMahjongArchipelago
 		[
             "50 Gold",
             "10 Energy",
-            "100 Essence",
+            "100 Merit",
         ];
 
 		public static List<string> TrapNames =

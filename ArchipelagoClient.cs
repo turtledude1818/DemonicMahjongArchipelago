@@ -167,7 +167,14 @@ public class ArchipelagoClient
         if (!GameData.ConnectSetupComplete) return;
         var receivedItem = helper.DequeueItem();
 
-        if (helper.Index <= ServerData.Index) return;
+        if (helper.Index <= ServerData.Index)
+        {
+            if (!GameData.IsItemUnlocked(receivedItem))
+            {
+                ServerData.Index = helper.Index - 1;
+            }
+            else return;
+        }
 
         ServerData.Index++;
         GameData.LastProcessedItem = ServerData.Index;
@@ -181,6 +188,11 @@ public class ArchipelagoClient
             ArchipelagoPlugin.BepinLogger.LogError($"{ex.Message}");
         }
 
+    }
+
+    public void SyncItems()
+    {
+        session.Socket.SendPacket(new SyncPacket());
     }
 
     public void CheckItems()

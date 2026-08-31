@@ -410,8 +410,8 @@ namespace DemonicMahjongArchipelago
         [HarmonyPostfix]
         public static void NewYaku(FanZhong fanZhong)
         {
-            GameData.checkLocation(fanZhong, "Yaku");
             GameData.CheckedYaku.Add(fanZhong);
+            GameData.checkLocation(fanZhong, "Yaku");
         }
         // Change to override to fix unlocking items after DLC update
         //[HarmonyPatch(typeof(Saver), "PlayFanNewFoundAdd")]
@@ -430,22 +430,24 @@ namespace DemonicMahjongArchipelago
         [HarmonyPostfix]
         public static void NewAchievement(AchievementRuntime __instance)
         {
-            GameData.checkLocation(__instance.OnlyId, "Achievement");
             GameData.CheckedAchievements.Add(__instance.OnlyId);
+            GameData.checkLocation(__instance.OnlyId, "Achievement");
         }
 
         [HarmonyPatch(typeof(GameMapMgr), "GameFinish")]
         [HarmonyPrefix]
         public static bool GameFinish(GameMapMgr __instance, bool isWin)
         {
+            GameData.InGame = false;
+            GameData.InBattle = false;
             if (isWin)
             {
                 if (GameData.Difficulty >= GameData.MinDifficulty &&
                     GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < 4)
                 {
                     if (GameData.MinDifficulty < GameData.MaxScalingDifficulty) GameData.MinDifficulty++;
-                    GameData.checkLocation(GameData.Character, "Character", 4);
                     GameData.MaxStages[GameData.Character] = 4;
+                    GameData.checkLocation(GameData.Character, "Character", 4);
                     ArchipelagoPlugin.BepinLogger.LogInfo($"Cleared Game as {GameData.Character}");
                 }
                 if (GameData.Difficulty > GameData.HighestDifficulty)
@@ -482,8 +484,8 @@ namespace DemonicMahjongArchipelago
             if (GameData.Difficulty >= GameData.MinDifficulty &&
                     GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < level)
             {
-                GameData.checkLocation(GameData.Character, "Character", level);
                 GameData.MaxStages[GameData.Character] = level;
+                GameData.checkLocation(GameData.Character, "Character", level);
             }
             return true;
         }
@@ -547,8 +549,8 @@ namespace DemonicMahjongArchipelago
                 if (GameData.Difficulty >= GameData.MinDifficulty &&
                         GameData.MaxStages.GetValueOrDefault<CharacterID, int>(GameData.Character) < level)
                 {
-                    GameData.checkLocation(GameData.Character, "Character", level);
                     GameData.MaxStages[GameData.Character] = level;
+                    GameData.checkLocation(GameData.Character, "Character", level);
                 }
             }
             return true;
