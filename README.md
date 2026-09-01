@@ -23,3 +23,4 @@ If you need a quicker response or just have a question, ask on Discord.
 - Newly received characters may not show properly in the Characters menu until re-entering the menu a second time.
 - Stage clears will be checked even when losing to the final boss of that stage.
 - The Energy meter will not visually update when receiving an energy filler item; hover over it to see the value.
+- Restart the game before starting a new archipelago or items may carry over from a previous one.

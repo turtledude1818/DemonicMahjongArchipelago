@@ -614,7 +614,8 @@ namespace DemonicMahjongArchipelago
                 //    new Il2CppSystem.Collections.Generic.List<CharacterSaveData>()
                 //    .ToArray().Cast<Il2CppReferenceArray<CharacterSaveData>>();
                 
-                ResetValues();
+
+                //ResetValues();
 
                 // Get/Set Options
                 options = new Dictionary<string, object>(success.SlotData);
@@ -661,6 +662,7 @@ namespace DemonicMahjongArchipelago
             {
                 Client.SyncItems();
             }
+            processUnprocessed();
             ArchipelagoPlugin.ArchipelagoClient.CheckItems();
             checkAllLocations();
             CheckGoalCompletion();
